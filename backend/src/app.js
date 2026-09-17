@@ -18,6 +18,7 @@ import {
 import {
   articleSchema,
   productSchema,
+  adSchema,
   settingsSchema,
   loginSchema,
   slug,
@@ -34,6 +35,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use('/api/admin/ads', express.json({ limit: '3mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(
@@ -58,6 +60,35 @@ app.get('/api/settings', async (_req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+function runningAdsFilter() {
+  const now = new Date().toISOString();
+  return {
+    active: true, deletedAt: null,
+    $and: [
+      { $or: [{ startsAt: '' }, { startsAt: { $lte: now } }] },
+      { $or: [{ endsAt: '' }, { endsAt: { $gt: now } }] },
+    ],
+  };
+}
+app.get('/api/ads', async (_req, res, next) => {
+  try {
+    const items = await db.collection('ads').find(runningAdsFilter()).sort({ createdAt: 1 }).toArray();
+    res.json({ items: items.map((record) => {
+      const ad = publicRecord(record);
+      if (ad.image.startsWith('data:image/'))
+        ad.image = '/api/ads/' + encodeURIComponent(ad.id) + '/image?v=' + new Date(ad.updatedAt).getTime();
+      return ad;
+    }) });
+  } catch (error) { next(error); }
+});
+app.get('/api/ads/:id/image', async (req, res, next) => {
+  try {
+    const ad = await db.collection('ads').findOne({ ...runningAdsFilter(), id: req.params.id });
+    const encoded = ad?.image.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/);
+    if (!encoded) return res.status(404).json({ error: 'This ad image was not found.' });
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin').set('Cache-Control', 'public, max-age=60').type(encoded[1]).send(Buffer.from(encoded[2], 'base64'));
+  } catch (error) { next(error); }
 });
 for (const name of ['articles', 'products']) {
   app.get('/api/' + name, async (req, res, next) => {
@@ -162,6 +193,18 @@ app.post('/api/auth/logout', verifyOrigin, requireAdmin, async (req, res, next) 
   }
 });
 app.use('/api/admin', verifyOrigin, requireAdmin);
+app.patch('/api/admin/ads/:id/active', async (req, res, next) => {
+  try {
+    const value = z.object({ active: z.boolean() }).strict().parse(req.body);
+    const record = await db.collection('ads').findOneAndUpdate(
+      { id: req.params.id, deletedAt: null },
+      { $set: { ...value, updatedAt: new Date() } },
+      { returnDocument: 'after' },
+    );
+    if (!record) return res.status(404).json({ error: 'This ad was not found.' });
+    res.json(publicRecord(record));
+  } catch (error) { next(error); }
+});
 app.get('/api/admin/stats', async (_req, res, next) => {
   try {
     const [published, drafts, products, archivedArticles, archivedProducts] = await Promise.all([
@@ -179,14 +222,16 @@ app.get('/api/admin/stats', async (_req, res, next) => {
 for (const [name, schema] of [
   ['articles', articleSchema],
   ['products', productSchema],
+  ['ads', adSchema],
 ]) {
   app.get('/api/admin/' + name, async (req, res, next) => {
     try {
       const { page, limit } = pagination(req.query);
       const filter =
+        name === 'ads' && req.query.includeArchived === 'true' ? {} :
         req.query.archived === 'true' ? { deletedAt: { $ne: null } } : { deletedAt: null };
       if (typeof req.query.q === 'string' && req.query.q.trim())
-        filter.$or = (name === 'articles' ? ['title', 'category'] : ['name', 'brand']).map(
+        filter.$or = (name === 'articles' ? ['title', 'category'] : name === 'ads' ? ['title', 'advertiser'] : ['name', 'brand']).map(
           (key) => ({ [key]: searchRegex(req.query.q) }),
         );
       if (name === 'articles' && ['draft', 'published'].includes(req.query.status))
@@ -209,7 +254,7 @@ for (const [name, schema] of [
   app.post('/api/admin/' + name, async (req, res, next) => {
     try {
       const value = schema.parse(req.body);
-      const base = slug(name === 'articles' ? value.title : value.brand + ' ' + value.name);
+      const base = slug(name === 'products' ? value.brand + ' ' + value.name : value.title);
       let id = base;
       if (await db.collection(name).findOne({ id }))
         id = base + '-' + randomBytes(4).toString('hex');

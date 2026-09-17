@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { MAX_PRODUCT_IMAGE_TEXT } from '../../shared/product-image.js';
 import { isEncodedProductImage } from './product-image.js';
+import { AD_PLACEMENTS } from '../../shared/ads.js';
+import { MAX_AD_IMAGE_TEXT } from '../../shared/ad-image.js';
+import { isEncodedAdGif } from './ad-image.js';
 const text = (min, max) => z.string().trim().min(min).max(max);
 const image = z
   .string()
@@ -79,6 +82,42 @@ export const productSchema = z
     (p) => p.priceStatus !== 'verified' || (p.priceSource && p.priceCheckedAt),
     'A verified price needs a retailer source and date checked.',
   );
+const adDate = z
+  .union([z.literal(''), z.iso.datetime({ offset: true })])
+  .transform((value) => (value ? new Date(value).toISOString() : ''));
+export const adSchema = z
+  .object({
+    title: text(1, 120),
+    advertiser: text(1, 100),
+    alt: text(1, 200),
+    image: z
+      .string()
+      .trim()
+      .max(MAX_AD_IMAGE_TEXT)
+      .refine(
+        (value) => productImage.safeParse(value).success || isEncodedAdGif(value),
+        'Use an image URL, a compressed JPEG/PNG/WebP, or a Base64 GIF no larger than 2 MB.',
+      ),
+    link: z
+      .string()
+      .trim()
+      .max(2000)
+      .url()
+      .refine((value) => /^https?:\/\//i.test(value), 'Use an HTTP(S) destination URL.'),
+    placements: z
+      .array(z.enum(AD_PLACEMENTS.map((placement) => placement.id)))
+      .min(1)
+      .max(AD_PLACEMENTS.length)
+      .refine((values) => new Set(values).size === values.length, 'Choose each placement once.'),
+    active: z.boolean().default(false),
+    startsAt: adDate.default(''),
+    endsAt: adDate.default(''),
+  })
+  .strict()
+  .refine((ad) => !ad.startsAt || !ad.endsAt || Date.parse(ad.endsAt) > Date.parse(ad.startsAt), {
+    message: 'The end date must be after the start date.',
+    path: ['endsAt'],
+  });
 export const settingsSchema = z
   .object({
     siteName: text(1, 60),

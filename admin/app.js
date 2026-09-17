@@ -1,4 +1,6 @@
 import { compressProductImage } from './product-image.js';
+import { createAdsManager } from './ads.js';
+import { prepareAdImage, isGifUpload } from './ad-image.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (v) =>
@@ -140,6 +142,7 @@ function layout(content) {
     ['overview', 'Overview', 'grid'],
     ['articles', 'Articles', 'book'],
     ['products', 'Products & prices', 'phone'],
+    ['ads', 'Ads & placements', 'external'],
     ['settings', 'Brand settings', 'settings'],
     ['assistant', 'Tekkatha AI', 'spark'],
   ];
@@ -165,6 +168,8 @@ async function loadView() {
       await loadList();
       layout(listPage());
       bindList();
+    } else if (view === 'ads') {
+      await adsManager.show();
     } else if (view === 'settings') {
       settings = await api('/settings');
       layout(settingsPage());
@@ -302,12 +307,15 @@ function openEditor(collection, id) {
   window.scrollTo(0, 0);
   history.replaceState({}, '', '/hello#' + view);
 }
-function productImageField(image) {
+function productImageField(
+  image,
+  { label = 'Device image', previewAlt = 'Current device image', allowGif = false } = {},
+) {
   const uploaded = image.startsWith('data:image/');
-  return `<div class="device-image-field wide"><span class="form-label">Device image</span><div class="device-image-upload"><div class="device-image-preview"><img id="device-image-preview" src="${esc(image)}" alt="Current device image"></div><div><label class="form-label" for="device-image-file">Upload from your computer<input id="device-image-file" type="file" accept="image/jpeg,image/png,image/webp" data-image-control aria-describedby="device-image-help device-image-status"></label><p id="device-image-help">JPEG, PNG, or WebP · up to 12 MB. Automatically resized and compressed to 350 KB or less.</p><p id="device-image-status" role="status">${uploaded ? 'Uploaded image stored with this product.' : 'Current image shown in the preview.'}</p><p id="device-image-error" role="alert" hidden></p></div></div><input type="hidden" name="image" value="${esc(image)}">${field('Or use an image URL / asset path', 'imageUrl', uploaded ? '' : image, { max: 2000, hint: 'A new upload replaces this URL. The current image stays unchanged until you save the product.' })}</div>`;
+  return `<div class="device-image-field wide"><span class="form-label">${esc(label)}</span><div class="device-image-upload"><div class="device-image-preview"><img id="device-image-preview" ${image ? 'src="' + esc(image) + '"' : 'hidden'} alt="${esc(previewAlt)}"></div><div><label class="form-label" for="device-image-file">Upload from your computer<input id="device-image-file" type="file" accept="image/jpeg,image/png,image/webp${allowGif ? ',image/gif,.gif,.gof' : ''}" data-image-control aria-describedby="device-image-help device-image-status"></label><p id="device-image-help">JPEG, PNG, or WebP · up to 12 MB. Automatically resized and compressed to 350 KB or less.${allowGif ? ' GIF (.gif or .gof): up to 2 MB; animation is preserved.' : ''}</p><p id="device-image-status" role="status">${uploaded ? 'Uploaded image saved with this record.' : image ? 'Current image shown in the preview.' : 'Upload an image or enter its URL.'}</p><p id="device-image-error" role="alert" hidden></p></div></div><input type="hidden" name="image" value="${esc(image)}">${field('Or use an image URL / asset path', 'imageUrl', uploaded ? '' : image, { max: 2000, hint: 'A new upload replaces this URL. Save your changes to apply the selected image.' })}</div>`;
 }
 
-function bindProductImage(form) {
+function bindProductImage(form, { allowGif = false } = {}) {
   const fileInput = $('#device-image-file', form);
   const urlInput = form.elements.imageUrl;
   const imageInput = form.elements.image;
@@ -331,7 +339,7 @@ function bindProductImage(form) {
     const valid = /^(https?:\/\/|\/assets\/)/i.test(imageInput.value);
     showPreview(valid ? imageInput.value : '');
     status.textContent = valid
-      ? 'Image URL selected. Save the product to apply it.'
+      ? 'Image URL selected. Save your changes to apply it.'
       : 'Enter an image URL or upload a device image.';
   });
   fileInput.addEventListener('change', async () => {
@@ -341,14 +349,15 @@ function bindProductImage(form) {
     const controls = [...form.querySelectorAll('[data-image-control], button[type="submit"]')];
     controls.forEach((control) => (control.disabled = true));
     error.hidden = true;
-    status.textContent = 'Compressing image…';
+    status.textContent =
+      allowGif && isGifUpload(file) ? 'Reading animated GIF…' : 'Compressing image…';
     try {
-      const compressed = await compressProductImage(file);
+      const compressed = await (allowGif ? prepareAdImage(file) : compressProductImage(file));
       if (!form.isConnected) return;
       imageInput.value = compressed.text;
       urlInput.value = '';
       showPreview(compressed.text);
-      status.textContent = `${file.name}: ${Math.ceil(file.size / 1024)} KB → ${Math.ceil(compressed.bytes / 1024)} KB · ${compressed.width} × ${compressed.height}. Save the product to apply this image.`;
+      status.textContent = `${file.name}: ${compressed.animated ? Math.ceil(compressed.bytes / 1024) + ' KB · GIF animation preserved' : Math.ceil(file.size / 1024) + ' KB → ' + Math.ceil(compressed.bytes / 1024) + ' KB'} · ${compressed.width} × ${compressed.height}. Save your changes to apply this image.`;
     } catch (uploadError) {
       if (!form.isConnected) return;
       error.textContent = uploadError.message;
@@ -620,6 +629,25 @@ function assistantPage() {
     `<section class="panel"><div class="panel-head"><h2>Tekkatha AI</h2><span class="pill">Catalog mode</span></div><div class="panel-content"><h3>Connected to the product database.</h3><p>The assistant can look up specifications, compare products from the same category, find phones within a budget, and link published buying guides. It uses the prices and verification labels you manage in the CMS.</p><p>A live language model and automatic retailer lookup are not connected. The assistant explains this limitation and does not claim current prices or stock.</p><a class="btn" href="${WEBSITE}/ai" target="_blank" rel="noopener noreferrer">Open Tekkatha AI ${icon('external')}</a></div></section>`
   );
 }
+const adsManager = createAdsManager({
+  api,
+  esc,
+  icon,
+  field,
+  heading,
+  layout,
+  notice,
+  productImageField,
+  bindProductImage,
+  currentView: () => view,
+  setEditorView: () => {
+    view = 'ads-editor';
+  },
+  returnToAds: () => {
+    view = 'ads';
+    return loadView();
+  },
+});
 document.addEventListener('click', async (e) => {
   const action = e.target.closest('[data-action]')?.dataset.action;
   if (action === 'theme') return toggleTheme();
@@ -678,7 +706,7 @@ try {
   const result = await api('/auth/me');
   admin = result.admin;
   const initial = location.hash.slice(1);
-  view = ['overview', 'articles', 'products', 'settings', 'assistant'].includes(initial)
+  view = ['overview', 'articles', 'products', 'ads', 'settings', 'assistant'].includes(initial)
     ? initial
     : 'overview';
   await loadView();

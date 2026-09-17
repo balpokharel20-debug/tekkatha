@@ -41,6 +41,8 @@ Run individual apps with `npm run dev:frontend`, `npm run dev:backend`, and `npm
 - Shared brand identity, SEO description, assistant naming, and contact naming settings
 - Tekkatha AI catalog assistant running through the backend against MongoDB records
 - Floating Tekkatha AI chat on every public page, with a shared conversation and draft on the full assistant page; includes suggested questions, product links, comparisons, loading states, and retry
+- Ads & placements workspace: create/edit banner campaigns, assign multiple locations, enable/pause, set local start/end dates, and archive/restore; supports compressed static uploads and animated GIF uploads up to 2 MB (including GIF files named `.gof`), stored as image text in MongoDB
+- Six public ad locations with equal shuffled rotation every eight visible seconds, no consecutive repeat when multiple ads are available, and visitor pause/next controls; rotation pauses offscreen, in hidden tabs, and while hovered or focused. Empty locations collapse. Open pages refresh campaigns every minute.
 - Responsive light and dark interfaces with a custom SVG wordmark, mark, and favicon
 
 ## Checks and builds
@@ -49,6 +51,7 @@ Run individual apps with `npm run dev:frontend`, `npm run dev:backend`, and `npm
 npm test
 npm run build
 npm run smoke --workspace backend
+npm run smoke:ads --workspace backend
 ```
 
 The smoke check requires the running backend and the initial local credentials file. It checks MongoDB persistence, admin authentication, draft privacy, publishing, archive/restore, product creation, assistant answers, and logout. It removes only its own temporary records. Production builds are written to `frontend/dist/` and `admin/dist/`.
@@ -56,6 +59,10 @@ The smoke check requires the running backend and the initial local credentials f
 ## API
 
 Public reads: `GET /api/articles`, `GET /api/articles/:id`, `GET /api/products`, `GET /api/products/:id`, and `GET /api/settings`. Lists support pagination; products also support `q`, `type`, `brand`, `maxPrice`, and price sorting. `POST /api/assistant` accepts `{ "question": "..." }`.
+
+Advertising: `GET /api/ads` exposes only enabled campaigns within their UTC-normalized schedules. Admin routes are `GET/POST /api/admin/ads`, `PUT/DELETE /api/admin/ads/:id`, `POST /api/admin/ads/:id/restore`, and `PATCH /api/admin/ads/:id/active` with `{ "active": true/false }`. Ad writes support up to 3 MB of JSON for animated GIF text; other requests retain their 1 MB limit. No campaigns are enabled or seeded by default.
+
+Uploaded ad images remain Base64 text in MongoDB. The public campaign list uses `/api/ads/:id/image` URLs so the browser loads only the banners it displays instead of downloading every encoded GIF during each campaign refresh. Paused, archived, or out-of-schedule images are not publicly served.
 
 Authentication: `/api/auth/login`, `/api/auth/me`, `/api/auth/logout`. Admin CRUD: `/api/admin/articles`, `/api/admin/products`, their `/:id` and `/:id/restore` endpoints, `/api/admin/stats`, and `/api/admin/settings`. Writes require a valid configured `Origin`, JSON content type, and an authenticated session for admin routes.
 

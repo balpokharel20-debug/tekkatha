@@ -851,6 +851,146 @@ h3 {
 .settings-form {
   max-width: 900px;
 }
+.ad-placement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.ad-placement-card {
+  padding: 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.ad-placement-card h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.ad-placement-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.ad-placement-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.ad-placement-card span,
+.ad-placement-card small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ads-toolbar {
+  flex-wrap: wrap;
+}
+.ads-toolbar .list-filters {
+  flex-wrap: wrap;
+}
+.ads-table {
+  min-width: 930px;
+}
+.ad-campaign {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ad-campaign img {
+  width: 70px;
+  height: 48px;
+  object-fit: contain;
+  background: var(--bg);
+  border-radius: 4px;
+}
+.ad-locations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 270px;
+}
+.pill.running {
+  color: #16704b;
+  background: #e8f7ef;
+}
+.pill.paused,
+.pill.scheduled {
+  color: var(--blue);
+  background: var(--soft);
+}
+.pill.expired {
+  color: var(--muted);
+  background: var(--bg);
+}
+:root[data-theme='dark'] .pill.running {
+  color: #9ae5c0;
+  background: #133c2d;
+}
+:root[data-theme='dark'] .pill.paused,
+:root[data-theme='dark'] .pill.scheduled {
+  color: #a7c6ff;
+}
+.ad-form-help {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: -8px 0 18px;
+}
+.ad-location-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ad-location-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg);
+  cursor: pointer;
+}
+.ad-location-option:has(input:checked) {
+  border-color: var(--blue);
+  background: var(--soft);
+}
+.ad-location-option input {
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+.ad-location-option strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.ad-location-option small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.ad-editor .device-image-upload {
+  grid-template-columns: 1fr;
+}
+.ad-editor .device-image-preview {
+  width: 100%;
+  height: 160px;
+}
+@media (max-width: 1100px) {
+  .ad-placement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .ad-placement-grid,
+  .ad-location-options {
+    grid-template-columns: 1fr;
+  }
+}
 .settings-form .btn {
   margin-top: 8px;
 }

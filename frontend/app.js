@@ -1,4 +1,5 @@
 'use strict';
+import { createAdDisplay } from './ads.js';
 const $ = (selector, root = document) => root.querySelector(selector);
 const esc = (value) =>
   String(value).replace(
@@ -155,6 +156,7 @@ function shell(content) {
   $('#app').innerHTML =
     header() + `<main id="main" tabindex="-1">${content}</main>` + footer() + tray();
   mountFloatingChat();
+  adDisplay.mount();
 }
 function render() {
   const path = location.pathname.replace(/\/$/, '') || '/';
@@ -975,4 +977,6 @@ async function boot() {
     $('#retry-content').addEventListener('click', boot);
   }
 }
+const adDisplay = createAdDisplay({ api, apiBase: API_BASE });
+adDisplay.start();
 boot();

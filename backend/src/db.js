@@ -14,6 +14,8 @@ export async function connect() {
     db.collection('articles').createIndex({ status: 1, deletedAt: 1, createdAt: -1 }),
     db.collection('products').createIndex({ id: 1 }, { unique: true }),
     db.collection('products').createIndex({ type: 1, brand: 1, price: 1 }),
+    db.collection('ads').createIndex({ id: 1 }, { unique: true }),
+    db.collection('ads').createIndex({ active: 1, deletedAt: 1, startsAt: 1, endsAt: 1 }),
   ]);
   return db;
 }
