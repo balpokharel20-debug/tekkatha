@@ -1,3 +1,5 @@
+import { compressProductImage } from './product-image.js';
+
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (v) =>
   String(v ?? '').replace(
@@ -300,6 +302,65 @@ function openEditor(collection, id) {
   window.scrollTo(0, 0);
   history.replaceState({}, '', '/hello#' + view);
 }
+function productImageField(image) {
+  const uploaded = image.startsWith('data:image/');
+  return `<div class="device-image-field wide"><span class="form-label">Device image</span><div class="device-image-upload"><div class="device-image-preview"><img id="device-image-preview" src="${esc(image)}" alt="Current device image"></div><div><label class="form-label" for="device-image-file">Upload from your computer<input id="device-image-file" type="file" accept="image/jpeg,image/png,image/webp" data-image-control aria-describedby="device-image-help device-image-status"></label><p id="device-image-help">JPEG, PNG, or WebP · up to 12 MB. Automatically resized and compressed to 350 KB or less.</p><p id="device-image-status" role="status">${uploaded ? 'Uploaded image stored with this product.' : 'Current image shown in the preview.'}</p><p id="device-image-error" role="alert" hidden></p></div></div><input type="hidden" name="image" value="${esc(image)}">${field('Or use an image URL / asset path', 'imageUrl', uploaded ? '' : image, { max: 2000, hint: 'A new upload replaces this URL. The current image stays unchanged until you save the product.' })}</div>`;
+}
+
+function bindProductImage(form) {
+  const fileInput = $('#device-image-file', form);
+  const urlInput = form.elements.imageUrl;
+  const imageInput = form.elements.image;
+  const preview = $('#device-image-preview', form);
+  const status = $('#device-image-status', form);
+  const error = $('#device-image-error', form);
+  urlInput.dataset.imageControl = '';
+
+  preview.addEventListener('error', () => {
+    preview.hidden = true;
+  });
+  const showPreview = (image) => {
+    preview.hidden = !image;
+    if (image) preview.src = image;
+    else preview.removeAttribute('src');
+  };
+  urlInput.addEventListener('input', () => {
+    imageInput.value = urlInput.value.trim();
+    fileInput.value = '';
+    error.hidden = true;
+    const valid = /^(https?:\/\/|\/assets\/)/i.test(imageInput.value);
+    showPreview(valid ? imageInput.value : '');
+    status.textContent = valid
+      ? 'Image URL selected. Save the product to apply it.'
+      : 'Enter an image URL or upload a device image.';
+  });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file || form.dataset.saving === 'true' || form.dataset.imageProcessing === 'true') return;
+    form.dataset.imageProcessing = 'true';
+    const controls = [...form.querySelectorAll('[data-image-control], button[type="submit"]')];
+    controls.forEach((control) => (control.disabled = true));
+    error.hidden = true;
+    status.textContent = 'Compressing image…';
+    try {
+      const compressed = await compressProductImage(file);
+      if (!form.isConnected) return;
+      imageInput.value = compressed.text;
+      urlInput.value = '';
+      showPreview(compressed.text);
+      status.textContent = `${file.name}: ${Math.ceil(file.size / 1024)} KB → ${Math.ceil(compressed.bytes / 1024)} KB · ${compressed.width} × ${compressed.height}. Save the product to apply this image.`;
+    } catch (uploadError) {
+      if (!form.isConnected) return;
+      error.textContent = uploadError.message;
+      error.hidden = false;
+      status.textContent = 'The current image has been kept.';
+    } finally {
+      form.dataset.imageProcessing = 'false';
+      fileInput.value = '';
+      if (form.dataset.saving !== 'true') controls.forEach((control) => (control.disabled = false));
+    }
+  });
+}
 function articleEditor() {
   const a = editing || {
     title: '',
@@ -368,7 +429,7 @@ function productEditor() {
       'Specifications, price context and availability in one record.',
       `<button class="btn secondary" data-nav="products">Back to products</button>`,
     ) +
-    `<form id="editor-form"><div id="editor-error"></div><div class="editor-grid"><div><section class="form-panel"><h2>Product essentials</h2><div class="form-grid">${field('Brand', 'brand', p.brand, { required: true, max: 80 })}${field('Product name', 'name', p.name, { required: true, max: 120 })}${field('Category', 'type', p.type, { list: types })}${field('Configuration / variant', 'variant', p.variant, { max: 150 })}${field('Image URL or asset path', 'image', p.image, { required: true, wide: true })}${field('Short overview', 'note', p.note, { type: 'textarea', wide: true, max: 600 })}</div></section><section class="form-panel"><h2>Specifications</h2><div class="form-grid">${[
+    `<form id="editor-form"><div id="editor-error"></div><div class="editor-grid"><div><section class="form-panel"><h2>Product essentials</h2><div class="form-grid">${field('Brand', 'brand', p.brand, { required: true, max: 80 })}${field('Product name', 'name', p.name, { required: true, max: 120 })}${field('Category', 'type', p.type, { list: types })}${field('Configuration / variant', 'variant', p.variant, { max: 150 })}${productImageField(p.image)}${field('Short overview', 'note', p.note, { type: 'textarea', wide: true, max: 600 })}</div></section><section class="form-panel"><h2>Specifications</h2><div class="form-grid">${[
       ['Display', 'display'],
       ['Processor', 'processor'],
       ['RAM / memory', 'memory'],
@@ -423,6 +484,7 @@ function parseBody(text) {
   return sections;
 }
 function bindEditor(collection) {
+  if (collection === 'products') bindProductImage($('#editor-form'));
   $('#editor-form').addEventListener('submit', (e) => {
     e.preventDefault();
     saveEditor(collection);
@@ -437,6 +499,11 @@ function bindEditor(collection) {
 }
 async function saveEditor(collection) {
   const form = $('#editor-form');
+  if (form.dataset.saving === 'true') return;
+  if (form.dataset.imageProcessing === 'true') {
+    notice('Please wait for the image to finish compressing.');
+    return;
+  }
   if (!form.reportValidity()) return;
   const data = Object.fromEntries(new FormData(form));
   let value;
@@ -478,7 +545,10 @@ async function saveEditor(collection) {
     value.priceCheckedAt = data.priceCheckedAt ? new Date(data.priceCheckedAt).toISOString() : '';
   }
   const buttons = [...form.querySelectorAll('button')];
+  const imageControls = [...form.querySelectorAll('[data-image-control]')];
+  form.dataset.saving = 'true';
   buttons.forEach((b) => (b.disabled = true));
+  imageControls.forEach((control) => (control.disabled = true));
   $('#editor-error').innerHTML = '';
   try {
     const result = await api(
@@ -498,10 +568,13 @@ async function saveEditor(collection) {
         : 'Product saved to MongoDB.',
     );
   } catch (error) {
-    $('#editor-error').innerHTML =
-      `<div class="form-error" role="alert">${esc(error.message)}</div>`;
-    $('#editor-error').scrollIntoView({ block: 'center' });
+    const errorBox = $('#editor-error', form);
+    errorBox.innerHTML = `<div class="form-error" role="alert">${esc(error.message)}</div>`;
+    if (form.isConnected) errorBox.scrollIntoView({ block: 'center' });
+  } finally {
+    form.dataset.saving = 'false';
     buttons.forEach((b) => (b.disabled = false));
+    imageControls.forEach((control) => (control.disabled = false));
   }
 }
 function settingsPage() {

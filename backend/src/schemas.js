@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { MAX_PRODUCT_IMAGE_TEXT } from '../../shared/product-image.js';
+import { isEncodedProductImage } from './product-image.js';
 const text = (min, max) => z.string().trim().min(min).max(max);
 const image = z
   .string()
@@ -13,6 +15,14 @@ const url = z
   .trim()
   .max(2000)
   .refine((x) => x === '' || /^https?:\/\//i.test(x), 'Use an HTTP(S) URL.');
+const productImage = z
+  .string()
+  .trim()
+  .max(MAX_PRODUCT_IMAGE_TEXT)
+  .refine(
+    (value) => image.safeParse(value).success || isEncodedProductImage(value),
+    'Use a /assets/ path, HTTP(S) URL, or Base64 JPEG, PNG, or WebP image no larger than 350 KB.',
+  );
 export const articleSchema = z
   .object({
     title: text(1, 180),
@@ -54,7 +64,7 @@ export const productSchema = z
       .default(''),
     availability: z.enum(['unverified', 'in-stock', 'out-of-stock']),
     variant: text(0, 150),
-    image,
+    image: productImage,
     display: text(0, 200),
     processor: text(0, 200),
     battery: text(0, 100),

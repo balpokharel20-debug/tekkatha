@@ -233,6 +233,7 @@ for (const [name, schema] of [
         .collection(name)
         .findOneAndUpdate(
           { id: req.params.id, deletedAt: null },
+          // One image field is overwritten atomically; no previous upload is retained.
           { $set: { ...value, updatedAt: new Date() } },
           { returnDocument: 'after' },
         );

@@ -754,6 +754,79 @@ h3 {
 .form-grid > .wide {
   grid-column: 1/-1;
 }
+.device-image-field {
+  min-width: 0;
+  margin-bottom: 24px;
+}
+.device-image-field > .form-label:first-child {
+  margin-bottom: 12px;
+}
+.device-image-upload {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.device-image-preview {
+  display: grid;
+  place-items: center;
+  height: 120px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.device-image-preview img {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  object-fit: contain;
+}
+.device-image-upload .form-label {
+  margin-bottom: 10px;
+}
+.device-image-upload input[type='file'] {
+  max-width: 100%;
+  padding: 8px;
+  background: var(--paper);
+}
+.device-image-upload input::file-selector-button {
+  padding: 7px 10px;
+  margin-right: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--soft);
+  color: var(--ink);
+  cursor: pointer;
+}
+#device-image-help,
+#device-image-status,
+#device-image-error {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin: 6px 0 0;
+}
+#device-image-error {
+  color: #c43131;
+}
+:root[data-theme='dark'] #device-image-error {
+  color: #ff9999;
+}
+@media (max-width: 600px) {
+  .device-image-upload {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .device-image-preview {
+    width: 120px;
+  }
+}
 .form-panel .form-label:last-child {
   margin-bottom: 0;
 }

@@ -36,6 +36,7 @@ Run individual apps with `npm run dev:frontend`, `npm run dev:backend`, and `npm
 - Admin sign-in with scrypt password hashing and HTTP-only, SameSite cookies; session tokens are hashed in MongoDB and expire after eight hours
 - Create and edit articles; drafts stay private, while published articles are available through the public API
 - Create and edit product specifications, configurations, prices, retailer sources, timestamps, and availability
+- Upload local device images (JPEG, PNG, WebP; up to 12 MB), with preview and browser compression to at most 1600 pixels on the longest edge and 350 KB; MongoDB stores the Base64 data URL as text in the product's `image` field, and saving a replacement atomically overwrites the old image text
 - Archive and restore articles and products; the CMS does not permanently delete content
 - Shared brand identity, SEO description, assistant naming, and contact naming settings
 - Tekkatha AI catalog assistant running through the backend against MongoDB records

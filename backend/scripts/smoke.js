@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { connect, client } from '../src/db.js';
+import { redImage, blueImage } from '../test/fixtures/images.js';
 const base = 'http://127.0.0.1:4000/api';
 const origin = 'http://localhost:5174';
 let cookie = '',
@@ -89,7 +90,7 @@ try {
     priceCheckedAt: '',
     availability: 'unverified',
     variant: 'Test configuration',
-    image: '/assets/phone.svg',
+    image: redImage,
     display: 'AMOLED · 120Hz',
     processor: 'Test processor',
     memory: '8GB',
@@ -103,24 +104,48 @@ try {
   assert.equal(result.status, 201);
   testIds.products.push(result.data.id);
   assert.equal((await request('/products/' + result.data.id)).data.price, 15000);
+  assert.equal((await request('/products/' + result.data.id)).data.image, redImage);
   const productId = result.data.id;
   assert.equal(
-    (await request('/admin/products/' + productId, 'PUT', { ...product, price: 23000 }, true))
-      .status,
+    (
+      await request(
+        '/admin/products/' + productId,
+        'PUT',
+        { ...product, price: 23000, image: blueImage },
+        true,
+      )
+    ).status,
     200,
   );
   assert.equal((await request('/products/' + productId)).data.price, 23000);
+  assert.equal((await request('/products/' + productId)).data.image, blueImage);
+  assert.equal(
+    (
+      await request(
+        '/admin/products/' + productId,
+        'PUT',
+        { ...product, image: 'data:image/svg+xml;base64,PHN2Zy8+' },
+        true,
+      )
+    ).status,
+    400,
+  );
+  assert.equal((await request('/products/' + productId)).data.image, blueImage);
   assert.equal(
     (await request('/assistant', 'POST', { question: 'Show phones under Rs. 50,000' })).status,
     200,
   );
   const db = await connect();
   assert.equal((await db.collection('articles').findOne({ id: a.id })).status, 'published');
-  assert.equal((await db.collection('products').findOne({ id: testIds.products[0] })).price, 23000);
+  const savedProduct = await db.collection('products').findOne({ id: testIds.products[0] });
+  assert.equal(savedProduct.price, 23000);
+  assert.equal(typeof savedProduct.image, 'string');
+  assert.equal(savedProduct.image, blueImage);
+  assert.equal(JSON.stringify(savedProduct).includes(redImage), false, 'old image text is removed');
   await request('/auth/logout', 'POST', {}, true);
   assert.equal((await request('/auth/me', 'GET', undefined, true)).status, 401);
   console.log(
-    'PASS: MongoDB persistence, admin auth, draft privacy, publishing, archive/restore, product creation, catalog assistant and logout.',
+    'PASS: MongoDB persistence, admin auth, draft privacy, publishing, archive/restore, product creation, image text replacement, invalid image rejection, catalog assistant and logout.',
   );
 } catch (error) {
   console.error('Integration check failed:', error.message);
