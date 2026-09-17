@@ -1,10 +1,99 @@
-import {db,publicRecord} from './db.js';
-export async function answerQuestion(question){const q=question.toLowerCase();const products=(await db.collection('products').find({deletedAt:null}).limit(100).toArray()).map(publicRecord);const matches=products.filter(p=>q.includes(p.name.toLowerCase())||q.includes(p.id)||(p.id==='galaxy-a56'&&/a56/.test(q))||(p.id==='nothing-3a'&&/nothing|3a/.test(q))||(p.id==='pixel-9a'&&/pixel/.test(q))||(p.id==='macbook-air-m4'&&/macbook|m4/.test(q)));const base={mode:'catalog',disclaimer:'Catalog mode uses MongoDB product records. No external language model or live retailer lookup is connected.'};
- if(/s27|iphone 18|5060|latest|current|available|availability|live/.test(q))return {...base,message:'I cannot verify live prices, current stock, or products outside the catalog. The listed prices have individual source and verification labels. Confirm the exact configuration and warranty with a local retailer.',products:matches};
- if(/compare|versus|\bvs\b/.test(q)){const ps=matches.slice(0,3);if(ps.length<2)return {...base,message:'Name at least two catalog products from the same category, or open the comparison page.',products:[]};if(new Set(ps.map(p=>p.type)).size>1)return {...base,message:'Choose products from the same category for a useful comparison.',products:[]};return {...base,message:'Here are the catalog specifications side by side. Specifications alone do not establish camera quality or real-world battery life.',comparison:ps,products:ps};}
- if(/under|budget|best phone/.test(q)){const m=q.match(/(?:rs\.?\s*|under\s*)([\d,]+)/);const budget=m?Number(m[1].replace(/,/g,'')):50000;const ps=products.filter(p=>p.type==='Smartphones'&&p.price<=budget);return {...base,message:ps.length?`${ps.length} phones match a budget of Rs. ${budget.toLocaleString('en-IN')} using the catalog prices. These are starting points, not a tested ranking. Check each price’s verification label before buying.`:'No catalog phones match that budget. Try a higher budget or another category.',products:ps};}
- if(/120\s*hz|amoled|oled|display/.test(q)&&!matches.length){const ps=products.filter(p=>p.type==='Smartphones'&&(!q.includes('120')||p.display.includes('120Hz'))&&(!q.includes('amoled')||p.display.toLowerCase().includes('amoled')));return {...base,message:'These products match your display request. Refresh rate alone does not establish color accuracy, brightness or battery performance.',products:ps};}
- if(matches.length)return {...base,message:matches[0].note,products:matches};
- if(/review|guide|build/.test(q)){const guides=(await db.collection('articles').find({status:'published',deletedAt:null,kind:'Guide'}).limit(5).toArray()).map(publicRecord);return {...base,message:'Start with these published Tekkatha guides.',guides,products:[]};}
- return {...base,message:'I can look up the products in Tekkatha’s MongoDB catalog, compare their specifications, or find phones within a budget. Try a product name or “Best phones under Rs. 50,000?”.',products:[]};
+import { db, publicRecord } from './db.js';
+export async function answerQuestion(question) {
+  const q = question.toLowerCase();
+  const products = (
+    await db.collection('products').find({ deletedAt: null }).limit(100).toArray()
+  ).map(publicRecord);
+  const matches = products.filter(
+    (p) =>
+      q.includes(p.name.toLowerCase()) ||
+      q.includes(p.id) ||
+      (p.id === 'galaxy-a56' && /a56/.test(q)) ||
+      (p.id === 'nothing-3a' && /nothing|3a/.test(q)) ||
+      (p.id === 'pixel-9a' && /pixel/.test(q)) ||
+      (p.id === 'macbook-air-m4' && /macbook|m4/.test(q)),
+  );
+  const base = {
+    mode: 'catalog',
+    disclaimer:
+      'Catalog mode uses MongoDB product records. No external language model or live retailer lookup is connected.',
+  };
+  if (/s27|iphone 18|5060|latest|current|available|availability|live/.test(q))
+    return {
+      ...base,
+      message:
+        'I cannot verify live prices, current stock, or products outside the catalog. The listed prices have individual source and verification labels. Confirm the exact configuration and warranty with a local retailer.',
+      products: matches,
+    };
+  if (/compare|versus|\bvs\b/.test(q)) {
+    const ps = matches.slice(0, 3);
+    if (ps.length < 2)
+      return {
+        ...base,
+        message:
+          'Name at least two catalog products from the same category, or open the comparison page.',
+        products: [],
+      };
+    if (new Set(ps.map((p) => p.type)).size > 1)
+      return {
+        ...base,
+        message: 'Choose products from the same category for a useful comparison.',
+        products: [],
+      };
+    return {
+      ...base,
+      message:
+        'Here are the catalog specifications side by side. Specifications alone do not establish camera quality or real-world battery life.',
+      comparison: ps,
+      products: ps,
+    };
+  }
+  if (/under|budget|best phone/.test(q)) {
+    const m = q.match(/(?:rs\.?\s*|under\s*)([\d,]+)/);
+    const budget = m ? Number(m[1].replace(/,/g, '')) : 50000;
+    const ps = products.filter((p) => p.type === 'Smartphones' && p.price <= budget);
+    return {
+      ...base,
+      message: ps.length
+        ? `${ps.length} phones match a budget of Rs. ${budget.toLocaleString('en-IN')} using the catalog prices. These are starting points, not a tested ranking. Check each price’s verification label before buying.`
+        : 'No catalog phones match that budget. Try a higher budget or another category.',
+      products: ps,
+    };
+  }
+  if (/120\s*hz|amoled|oled|display/.test(q) && !matches.length) {
+    const ps = products.filter(
+      (p) =>
+        p.type === 'Smartphones' &&
+        (!q.includes('120') || p.display.includes('120Hz')) &&
+        (!q.includes('amoled') || p.display.toLowerCase().includes('amoled')),
+    );
+    return {
+      ...base,
+      message:
+        'These products match your display request. Refresh rate alone does not establish color accuracy, brightness or battery performance.',
+      products: ps,
+    };
+  }
+  if (matches.length) return { ...base, message: matches[0].note, products: matches };
+  if (/review|guide|build/.test(q)) {
+    const guides = (
+      await db
+        .collection('articles')
+        .find({ status: 'published', deletedAt: null, kind: 'Guide' })
+        .limit(5)
+        .toArray()
+    ).map(publicRecord);
+    return {
+      ...base,
+      message: 'Start with these published Tekkatha guides.',
+      guides,
+      products: [],
+    };
+  }
+  return {
+    ...base,
+    message:
+      'I can look up the products in Tekkatha’s MongoDB catalog, compare their specifications, or find phones within a budget. Try a product name or “Best phones under Rs. 50,000?”.',
+    products: [],
+  };
 }
