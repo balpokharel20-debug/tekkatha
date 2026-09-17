@@ -1,0 +1,338 @@
+{
+  "articles": [
+    {
+      "id": "laptop-buying-guide",
+      "category": "Buying Guides",
+      "title": "The laptop buying guide: less guesswork. Better choices.",
+      "excerpt": "From everyday work to your next big idea. Find a laptop that fits your life, and your budget.",
+      "image": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=1400&q=85",
+      "read": 7,
+      "author": "Tekkatha Editorial",
+      "kind": "Guide",
+      "body": [
+        {
+          "heading": "Start with the work you actually do",
+          "text": "A laptop for documents, video calls and browser tabs has different priorities from a machine for rendering, software development or gaming. Write down your three most demanding tasks before comparing models. That list gives you a useful way to judge every specification."
+        },
+        {
+          "heading": "Memory and storage deserve attention",
+          "text": "For a new everyday laptop, compare configurations with enough memory for the applications you use together. Check whether memory can be upgraded later. An SSD improves responsiveness, but its capacity should also fit your projects, games and offline files."
+        },
+        {
+          "heading": "The screen is part of every task",
+          "text": "Look at screen size, resolution, brightness and the ports you need for an external monitor. Try the keyboard and trackpad when you can. These are the parts you interact with all day, and they rarely fit neatly into a benchmark score."
+        },
+        {
+          "heading": "Shop the whole package in Nepal",
+          "text": "Confirm the exact configuration on the invoice. Ask who handles warranty service, whether the unit is officially distributed or imported independently, and what the return policy covers. Compare the final price including any memory or storage upgrades you need."
+        },
+        {
+          "heading": "Your pre-purchase checklist",
+          "text": "Match your main applications to the processor and operating system. Check upgradeability, ports, charger, warranty and seller reputation. A good fit comes from a balanced package rather than one impressive number."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "phone-specs-explained",
+      "category": "Smartphones",
+      "title": "Beyond the spec sheet: what makes a great everyday phone?",
+      "excerpt": "The display, battery, camera and software details that deserve your attention.",
+      "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=85",
+      "read": 5,
+      "author": "Tekkatha Editorial",
+      "kind": "Explainer",
+      "body": [
+        {
+          "heading": "A good display is more than a refresh rate",
+          "text": "A high refresh rate can make scrolling feel smoother. Panel quality, outdoor readability, size and resolution also affect daily use. AMOLED and OLED panels can deliver strong contrast, but two phones with the same panel label can still look different."
+        },
+        {
+          "heading": "Battery capacity is a starting point",
+          "text": "A larger battery does not automatically mean longer real-world endurance. The display, processor, network connection and software all draw power. Look for independent testing that reflects how you use a phone, and check which charger is included."
+        },
+        {
+          "heading": "Camera numbers need context",
+          "text": "Megapixel counts describe image resolution, not the complete photographic experience. Stabilization, processing, autofocus and lens choice can matter just as much. Compare full-resolution samples in daylight, low light and the situations you care about."
+        },
+        {
+          "heading": "Software is part of the purchase",
+          "text": "Check the manufacturer’s update commitment, how long the model has already been on sale, and whether your essential apps and payment services work locally. A phone’s long-term usefulness extends beyond the hardware inside it."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "ai-on-your-laptop",
+      "category": "AI",
+      "title": "AI on your laptop: what runs locally, and what needs the cloud?",
+      "excerpt": "A practical look at on-device AI, privacy and the hardware behind it.",
+      "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=900&q=85",
+      "read": 6,
+      "author": "Tekkatha Editorial",
+      "kind": "Explainer",
+      "body": [
+        {
+          "heading": "Local and cloud AI take different paths",
+          "text": "A local AI model runs on your own device. A cloud model sends requests to remote infrastructure. Some applications combine both approaches, so a feature’s name alone does not tell you where your data goes. Check the documentation and privacy settings for the specific application."
+        },
+        {
+          "heading": "Hardware requirements depend on the model",
+          "text": "Memory, graphics hardware and processor support can limit what runs locally. A small model may fit comfortably on one laptop while a larger model needs more resources. Check the model’s documented requirements before buying hardware for a particular workflow."
+        },
+        {
+          "heading": "An NPU is only one piece of the system",
+          "text": "Neural processing units accelerate supported machine-learning workloads. Applications still need compatible software to use them. An NPU specification does not guarantee that every AI tool will run faster or remain offline."
+        },
+        {
+          "heading": "Choose the workflow first",
+          "text": "Decide whether your priority is privacy, offline access, speed or a particular application. Test the tools you expect to use. Buy for a supported workflow rather than an AI label on the box."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "first-pc-build",
+      "category": "PC Components",
+      "title": "Your first PC build starts with a plan, not a shopping cart",
+      "excerpt": "Choose compatible parts and put your budget where it makes a difference.",
+      "image": "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&fit=crop&w=900&q=85",
+      "read": 8,
+      "author": "Tekkatha Editorial",
+      "kind": "Guide",
+      "body": [
+        {
+          "heading": "Define the job and the budget",
+          "text": "Start with your target games, screen resolution and applications. Set a total budget that includes a monitor, peripherals and the operating system if you need them. Keep a reserve for delivery, assembly and unexpected costs."
+        },
+        {
+          "heading": "Check the compatibility chain",
+          "text": "The processor must match the motherboard socket and supported firmware. Memory must match the board’s supported generation. Check graphics-card clearance, cooler height, storage connectors and case form factor against each manufacturer’s specifications."
+        },
+        {
+          "heading": "Choose power and cooling carefully",
+          "text": "Use a reputable power supply with sufficient capacity and the correct connectors for your components. Follow manufacturer recommendations and leave sensible headroom. Plan airflow around the case and cooler rather than treating fans as a last-minute addition."
+        },
+        {
+          "heading": "Build the list before ordering",
+          "text": "Record the exact model and revision of each part. Confirm local warranty coverage and whether firmware updates or assembly are included. Review the complete list for compatibility before placing separate orders."
+        },
+        {
+          "heading": "A first boot is a checkpoint",
+          "text": "Consult the motherboard manual, verify temperatures, install drivers from official sources and check stability before doing demanding work. Keep invoices, serial numbers and warranty information together."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "gaming-monitor-guide",
+      "category": "Gaming",
+      "title": "144Hz, 165Hz or 240Hz? Make sense of gaming monitors",
+      "excerpt": "Why refresh rate is only one part of a smoother gaming experience.",
+      "image": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=900&q=85",
+      "read": 4,
+      "author": "Tekkatha Editorial",
+      "kind": "Guide",
+      "body": [
+        {
+          "heading": "Refresh rate measures opportunities",
+          "text": "A 144Hz display can update its image 144 times per second. Higher refresh rates can make movement easier to follow, but your computer must deliver enough frames to take advantage of them. Choose around the games and graphics settings you actually use."
+        },
+        {
+          "heading": "Resolution changes the workload",
+          "text": "Higher resolution improves detail while increasing the work your graphics hardware must do. Compare your GPU’s performance at the monitor’s native resolution. Screen size, viewing distance and text clarity matter outside games too."
+        },
+        {
+          "heading": "Look beyond the headline number",
+          "text": "Response-time behavior, adaptive sync, input lag, panel quality and connectivity all contribute to the experience. Read independent measurements instead of relying only on the fastest advertised response time."
+        },
+        {
+          "heading": "Match the display to your setup",
+          "text": "Check that your GPU, cable and monitor input support the refresh rate you want at your chosen resolution. Consider an adjustable stand, warranty terms and the seller’s dead-pixel policy."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "macbook-air-overview",
+      "category": "Laptops",
+      "title": "MacBook Air M4: a closer look at the essentials",
+      "excerpt": "A quiet, portable laptop. Here are the specifications to consider before buying.",
+      "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=900&q=85",
+      "read": 5,
+      "author": "Tekkatha Editorial",
+      "kind": "Product overview",
+      "body": [
+        {
+          "heading": "The configuration at a glance",
+          "text": "Apple’s 13-inch M4 MacBook Air has a 13.6-inch Liquid Retina display and a 10-core CPU. The base configuration includes 16GB of unified memory and a 256GB SSD. Configure memory and storage around the work you expect to do over the life of the laptop."
+        },
+        {
+          "heading": "Ports and everyday setup",
+          "text": "The model includes MagSafe charging, two Thunderbolt 4 ports and a headphone jack. If you use legacy USB accessories, wired networking or memory cards, factor suitable adapters into your setup. Check Apple’s specifications for external display support."
+        },
+        {
+          "heading": "Before buying in Nepal",
+          "text": "Confirm the precise screen size, memory, storage and keyboard configuration. Ask whether local service coverage applies to the specific unit. The price shown in our preview catalog is illustrative and does not establish current availability."
+        },
+        {
+          "heading": "Specifications are a starting point",
+          "text": "This page is a product overview, not a hands-on review. Consult the official specifications and independent testing of the workloads that matter to you before making a buying decision."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "headphone-buying-guide",
+      "category": "Reviews",
+      "title": "What to look for in your next pair of wireless headphones",
+      "excerpt": "Comfort, sound, battery life and the features you will actually use.",
+      "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=85",
+      "read": 4,
+      "author": "Tekkatha Editorial",
+      "kind": "Review checklist",
+      "body": [
+        {
+          "heading": "Comfort comes first",
+          "text": "Compare weight, earcup shape, clamping force and fit before thinking about extra features. A headset that sounds good for five minutes may not suit a long workday. Check the seller’s return policy if you cannot try it in person."
+        },
+        {
+          "heading": "Understand your listening environment",
+          "text": "Active noise cancellation can reduce some background noise, but performance varies across frequencies and situations. Consider transparency mode, microphone quality and wind noise if you regularly use headphones outdoors."
+        },
+        {
+          "heading": "Battery and connectivity need context",
+          "text": "Advertised battery life depends on volume, codec and enabled features. Check whether you need multipoint pairing, wired playback, replaceable cushions or a low-latency connection. Choose features that match your devices and routines."
+        },
+        {
+          "heading": "How Tekkatha will review audio",
+          "text": "A full review should identify the exact model, test conditions and source of the device, then separate measured behavior from listening impressions. This sample checklist is not a claim of hands-on testing."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    },
+    {
+      "id": "buying-tech-nepal",
+      "category": "Buying Guides",
+      "title": "Buying gadgets in Nepal: the warranty and price checklist",
+      "excerpt": "Ask the right questions about imports, official warranty and after-sales support.",
+      "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=900&q=85",
+      "read": 6,
+      "author": "Tekkatha Editorial",
+      "kind": "Guide",
+      "body": [
+        {
+          "heading": "Ask who stands behind the warranty",
+          "text": "Official distribution and independent imports can have different service arrangements. Ask who performs repairs, where the service center is, how long coverage lasts and whether parts and labor are included. Get those answers in writing."
+        },
+        {
+          "heading": "Compare the exact configuration",
+          "text": "A familiar model name can cover several memory, storage, display or processor options. Record the complete configuration and model code on the invoice. Ask whether the box is sealed and whether any upgrades were installed by the seller."
+        },
+        {
+          "heading": "Check the final cost",
+          "text": "Compare prices for the same configuration and warranty terms. Include necessary adapters, chargers, upgrades, delivery or assembly in your budget. A lower advertised price may cover a different package."
+        },
+        {
+          "heading": "Keep the paperwork",
+          "text": "Retain your invoice, serial number, warranty documents and payment receipt. Review the return window and the rules for early defects before buying. For imported devices, confirm relevant local registration and network compatibility requirements with official sources."
+        }
+      ],
+      "status": "published",
+      "isSample": true
+    }
+  ],
+  "products": [
+    {
+      "id": "galaxy-a56",
+      "brand": "Samsung",
+      "name": "Galaxy A56 5G",
+      "type": "Smartphones",
+      "price": 45999,
+      "variant": "8GB RAM · 128GB storage",
+      "image": "/assets/phone.svg",
+      "display": "6.7-inch Super AMOLED · 120Hz",
+      "processor": "Exynos 1580",
+      "battery": "5,000 mAh",
+      "memory": "8GB",
+      "storage": "128GB",
+      "camera": "50MP main",
+      "source": "https://news.samsung.com/global/samsung-marks-a-step-forward-with-ai-for-everyone-by-introducing-new-galaxy-a56-5g-galaxy-a36-5g-and-galaxy-a26-5g",
+      "note": "A large AMOLED screen and a balanced set of everyday specifications.",
+      "priceStatus": "sample",
+      "priceSource": "",
+      "priceCheckedAt": "",
+      "availability": "unverified"
+    },
+    {
+      "id": "nothing-3a",
+      "brand": "Nothing",
+      "name": "Phone (3a)",
+      "type": "Smartphones",
+      "price": 48999,
+      "variant": "8GB RAM · 128GB storage",
+      "image": "/assets/nothing.svg",
+      "display": "6.77-inch AMOLED · 120Hz",
+      "processor": "Snapdragon 7s Gen 3",
+      "battery": "5,000 mAh",
+      "memory": "8GB",
+      "storage": "128GB",
+      "camera": "50MP main + 50MP telephoto",
+      "source": "https://intl.nothing.tech/products/phone-3a",
+      "note": "Distinctive hardware with a telephoto camera and a 120Hz AMOLED display.",
+      "priceStatus": "sample",
+      "priceSource": "",
+      "priceCheckedAt": "",
+      "availability": "unverified"
+    },
+    {
+      "id": "pixel-9a",
+      "brand": "Google",
+      "name": "Pixel 9a",
+      "type": "Smartphones",
+      "price": 67999,
+      "variant": "8GB RAM · 128GB storage",
+      "image": "/assets/pixel.svg",
+      "display": "6.3-inch OLED · 120Hz",
+      "processor": "Google Tensor G4",
+      "battery": "5,100 mAh",
+      "memory": "8GB",
+      "storage": "128GB",
+      "camera": "48MP main",
+      "source": "https://support.google.com/pixelphone/answer/7158570?hl=en",
+      "note": "A smaller OLED display with Google’s Tensor G4 processor.",
+      "priceStatus": "sample",
+      "priceSource": "",
+      "priceCheckedAt": "",
+      "availability": "unverified"
+    },
+    {
+      "id": "macbook-air-m4",
+      "brand": "Apple",
+      "name": "MacBook Air M4",
+      "type": "Laptops",
+      "price": 149999,
+      "variant": "16GB RAM · 256GB SSD",
+      "image": "/assets/laptop.svg",
+      "display": "13.6-inch Liquid Retina · 60Hz",
+      "processor": "Apple M4 · 10-core CPU",
+      "battery": "53.8 Wh",
+      "memory": "16GB",
+      "storage": "256GB SSD",
+      "camera": "12MP Center Stage",
+      "source": "https://support.apple.com/en-ie/122209",
+      "note": "A fanless notebook with a 13.6-inch display and Apple M4 processor.",
+      "priceStatus": "sample",
+      "priceSource": "",
+      "priceCheckedAt": "",
+      "availability": "unverified"
+    }
+  ]
+}
