@@ -64,6 +64,9 @@ let siteSettings = {
 let catalogState = { query: '', type: 'All', brand: 'All', budget: 'all', sort: 'featured' };
 let showDifferences = false;
 let aiMessages = [];
+let aiBusy = false;
+let aiDraft = '';
+let floatingChatOpen = false;
 let newsFilter = 'All';
 let searchOpen = false;
 let searchReturnFocus = null;
@@ -151,6 +154,7 @@ function tray() {
 function shell(content) {
   $('#app').innerHTML =
     header() + `<main id="main" tabindex="-1">${content}</main>` + footer() + tray();
+  mountFloatingChat();
 }
 function render() {
   const path = location.pathname.replace(/\/$/, '') || '/';
@@ -305,11 +309,13 @@ document.addEventListener('click', (e) => {
   ) {
     e.preventDefault();
     if (searchOpen) closeSearch();
+    if (action === 'full-chat') setFloatingChat(false, false);
     navigate(a.getAttribute('href'));
   }
 });
 function openSearch() {
   if (searchOpen) return;
+  if (floatingChatOpen) setFloatingChat(false);
   searchOpen = true;
   searchReturnFocus = document.activeElement;
   document.body.style.overflow = 'hidden';
@@ -356,7 +362,10 @@ function closeSearch() {
   searchReturnFocus?.focus();
 }
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && searchOpen) closeSearch();
+  if (e.key === 'Escape') {
+    if (searchOpen) closeSearch();
+    else if (floatingChatOpen) setFloatingChat(false);
+  }
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
     e.preventDefault();
     openSearch();
@@ -602,6 +611,75 @@ function articlePage(a) {
 function aiPage() {
   return `<div class="container ai-container">${pageHead('Your next tech decision starts here.', 'Ask Tekkatha AI about products, specifications, prices, comparisons, reviews, and buying recommendations.', 'Tekkatha AI')}<section class="ai-workspace"><div class="ai-workspace-head"><span class="ai-name">${icon('spark')} ${esc(siteSettings.aiName)}</span><span class="pill">Catalog mode</span><button class="text-link" data-action="new-chat">New conversation ${icon('plus')}</button></div><div class="ai-chat" id="ai-chat" aria-live="polite">${aiMessages.length ? renderMessages() : `<div class="ai-welcome"><div class="ai-welcome-icon">${icon('spark')}</div><h2>A little clarity goes a long way.</h2><p>Compare the details. Understand the specs.<br>Find a better starting point.</p><div class="ai-suggestions">${['Best phones under Rs. 50,000?', 'Compare Galaxy A56 and Nothing Phone (3a)', 'Show me phones with 120Hz AMOLED displays', 'What is the latest price of this product?'].map((q) => `<button data-question="${esc(q)}">${esc(q)} ${icon('arrow')}</button>`).join('')}</div></div>`}</div><form id="ai-form" class="ai-input-form"><label class="sr-only" for="ai-input">Ask Tekkatha AI</label><input id="ai-input" placeholder="Ask anything about gadgets..." autocomplete="off" maxlength="1000" required><button class="btn" aria-label="Send question">${icon('send')}</button></form><p class="ai-disclaimer">Catalog mode uses Tekkatha’s MongoDB records. Live AI and retailer lookup are not connected.</p></section><div class="ai-bottom"><span>${icon('shield')} Specifications linked to manufacturer sources</span><span>${icon('tag')} Sample Nepal prices are clearly marked</span></div></div>`;
 }
+function chatWelcome(compact = false) {
+  const questions = compact
+    ? [
+        'Best phones under Rs. 50,000?',
+        'Compare Galaxy A56 and Nothing Phone (3a)',
+        'Show me phones with 120Hz AMOLED displays',
+      ]
+    : [
+        'Best phones under Rs. 50,000?',
+        'Compare Galaxy A56 and Nothing Phone (3a)',
+        'Show me phones with 120Hz AMOLED displays',
+        'What is the latest price of this product?',
+      ];
+  return `<div class="ai-welcome"><div class="ai-welcome-icon">${icon('spark')}</div><h2>${compact ? 'What can we help you find?' : 'A little clarity goes a long way.'}</h2><p>${compact ? 'Ask about products, specs, prices, and comparisons.' : 'Compare the details. Understand the specs.<br>Find a better starting point.'}</p><div class="ai-suggestions">${questions.map((q) => `<button type="button" data-question="${esc(q)}">${esc(q)} ${icon('arrow')}</button>`).join('')}</div></div>`;
+}
+function mountFloatingChat() {
+  const root = $('#floating-chat-root');
+  if (!root.firstElementChild) {
+    root.innerHTML = `<section id="floating-chat-panel" class="floating-chat-panel" role="dialog" aria-modal="false" aria-labelledby="floating-chat-title" hidden><div class="floating-chat-head"><span class="floating-chat-symbol">${icon('spark')}</span><div><h2 id="floating-chat-title">${esc(siteSettings.aiName)}</h2><span>Catalog assistant</span></div><button type="button" class="icon-btn" data-action="close-floating-chat" aria-label="Close chat">${icon('close')}</button></div><div class="floating-chat-tools"><a href="/ai" data-action="full-chat">Open full chat ${icon('arrow')}</a><button type="button" data-action="new-chat">New chat ${icon('plus')}</button></div><div id="floating-ai-chat" class="ai-chat" role="log" aria-live="polite" aria-label="Chat conversation"></div><form id="floating-ai-form" class="ai-input-form"><label class="sr-only" for="floating-ai-input">Ask Tekkatha AI</label><input id="floating-ai-input" placeholder="Ask anything about gadgets..." autocomplete="off" maxlength="1000" required><button class="btn" type="submit" aria-label="Send question">${icon('send')}</button></form><p class="ai-disclaimer">Uses our catalog. Live AI and retailer lookup are not connected.</p></section><button id="floating-chat-launcher" class="floating-chat-launcher" type="button" data-action="toggle-floating-chat" aria-expanded="false" aria-controls="floating-chat-panel">${icon('spark')}<span>${esc(siteSettings.aiName)}</span></button>`;
+    $('#floating-ai-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      askAi($('#floating-ai-input').value, 'floating-ai-input');
+    });
+    updateAiChats();
+  }
+  $('#floating-chat-title').textContent = siteSettings.aiName;
+  $('#floating-chat-launcher span').textContent = siteSettings.aiName;
+  root.classList.toggle('has-comparison', !!$('.compare-tray'));
+}
+function setFloatingChat(open, returnFocus = true) {
+  floatingChatOpen = open;
+  $('#floating-chat-panel').hidden = !open;
+  $('#floating-chat-launcher').setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('chat-is-open', open);
+  if (open) {
+    updateAiChats(true);
+    $('#floating-ai-input').focus({ preventScroll: true });
+  } else if (returnFocus) $('#floating-chat-launcher').focus({ preventScroll: true });
+}
+function updateAiChats(forceScroll = false) {
+  for (const id of ['ai-chat', 'floating-ai-chat']) {
+    const chat = $('#' + id);
+    if (!chat) continue;
+    const atBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
+    chat.innerHTML =
+      (aiMessages.length ? renderMessages() : chatWelcome(id === 'floating-ai-chat')) +
+      (aiBusy
+        ? `<div class="chat-pending" role="status">${icon('spark')} Checking the catalog…</div>`
+        : '');
+    if (forceScroll || atBottom) chat.scrollTop = chat.scrollHeight;
+  }
+  document
+    .querySelectorAll(
+      '#ai-form button, #floating-ai-form button, [data-action="new-chat"], [data-question]',
+    )
+    .forEach((button) => {
+      button.disabled = aiBusy;
+    });
+  for (const id of ['ai-input', 'floating-ai-input']) {
+    const input = $('#' + id);
+    if (input) input.value = aiDraft;
+  }
+}
+document.addEventListener('input', (e) => {
+  if (!['ai-input', 'floating-ai-input'].includes(e.target.id)) return;
+  aiDraft = e.target.value;
+  const other = $('#' + (e.target.id === 'ai-input' ? 'floating-ai-input' : 'ai-input'));
+  if (other) other.value = aiDraft;
+});
 function renderMessages() {
   return aiMessages
     .map((m) =>
@@ -611,15 +689,22 @@ function renderMessages() {
     )
     .join('');
 }
-async function askAi(q) {
+async function askAi(q, inputId = 'ai-input') {
   const question = q.trim().slice(0, 1000);
-  if (!question || $('#ai-form button').disabled) return;
+  if (!question || aiBusy) return;
   aiMessages.push({ role: 'user', text: question });
-  $('#ai-chat').innerHTML = renderMessages();
-  $('#ai-input').value = '';
-  $('#ai-form button').disabled = true;
+  aiBusy = true;
+  aiDraft = '';
+  updateAiChats(true);
+  $('#' + inputId)?.focus({ preventScroll: true });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const result = await api('/assistant', { method: 'POST', body: JSON.stringify({ question }) });
+    const result = await api('/assistant', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+      signal: controller.signal,
+    });
     let html = '<p>' + esc(result.message) + '</p>';
     if (result.comparison) {
       html +=
@@ -688,17 +773,27 @@ async function askAi(q) {
         '</div>';
     aiMessages.push({ role: 'assistant', html });
   } catch (error) {
-    aiMessages.push({ role: 'assistant', html: '<p>' + esc(error.message) + '</p>' });
+    const message =
+      error.name === 'AbortError'
+        ? 'The assistant took too long to respond. Please try again.'
+        : error.message;
+    aiMessages.push({
+      role: 'assistant',
+      html:
+        '<p>' +
+        esc(message) +
+        '</p><button type="button" class="chat-retry" data-question="' +
+        esc(question) +
+        '">Try again</button>',
+    });
   } finally {
-    if ($('#ai-chat')) {
-      $('#ai-chat').innerHTML = renderMessages();
-      $('#ai-chat').scrollTop = $('#ai-chat').scrollHeight;
-      $('#ai-form button').disabled = false;
-      $('#ai-input').focus();
-    }
+    clearTimeout(timeout);
+    aiBusy = false;
+    updateAiChats();
   }
 }
 function bindAi() {
+  updateAiChats();
   $('#ai-form').addEventListener('submit', (e) => {
     e.preventDefault();
     askAi($('#ai-input').value);
@@ -744,11 +839,20 @@ document.addEventListener('click', (e) => {
     render();
   }
   if (action === 'new-chat') {
+    if (aiBusy) return;
     aiMessages = [];
-    render();
+    aiDraft = '';
+    updateAiChats(true);
+    (floatingChatOpen ? $('#floating-ai-input') : $('#ai-input'))?.focus();
   }
+  if (action === 'toggle-floating-chat') setFloatingChat(!floatingChatOpen);
+  if (action === 'close-floating-chat') setFloatingChat(false);
   const question = e.target.closest('[data-question]');
-  if (question) askAi(question.dataset.question);
+  if (question)
+    askAi(
+      question.dataset.question,
+      question.closest('#floating-chat-panel') ? 'floating-ai-input' : 'ai-input',
+    );
   const aiCompare = e.target.closest('[data-ai-compare]');
   if (aiCompare) {
     selected = aiCompare.dataset.aiCompare.split(',');

@@ -39,6 +39,7 @@ Run individual apps with `npm run dev:frontend`, `npm run dev:backend`, and `npm
 - Archive and restore articles and products; the CMS does not permanently delete content
 - Shared brand identity, SEO description, assistant naming, and contact naming settings
 - Tekkatha AI catalog assistant running through the backend against MongoDB records
+- Floating Tekkatha AI chat on every public page, with a shared conversation and draft on the full assistant page; includes suggested questions, product links, comparisons, loading states, and retry
 - Responsive light and dark interfaces with a custom SVG wordmark, mark, and favicon
 
 ## Checks and builds
