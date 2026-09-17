@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": ["frontend", "backend", "admin"],
   "scripts": {
-    "dev": "node serve.mjs",
-    "build": "node prepare.mjs",
-    "check": "node --check dist/app.js"
+    "dev": "node scripts/dev.mjs",
+    "setup": "npm run setup --workspace backend",
+    "build": "npm run build --workspace frontend && npm run build --workspace admin",
+    "test": "npm run test --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:admin": "npm run dev --workspace admin",
+    "preview:prototype": "node serve.mjs"
   }
 }

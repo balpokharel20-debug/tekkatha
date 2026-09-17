@@ -2,3 +2,10 @@
 node_modules/
 *.zip
 qa/
+.local/
+.env
+.env.*
+!.env.example
+frontend/dist/
+admin/dist/
+backend/coverage/
