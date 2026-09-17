@@ -994,6 +994,38 @@ h3 {
 .settings-form .btn {
   margin-top: 8px;
 }
+.seo-panel .seo-help {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+.seo-preview {
+  margin-bottom: 22px;
+}
+.seo-preview summary {
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.seo-preview pre {
+  padding: 16px;
+  margin-top: 12px;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--soft);
+}
+.seo-preview code,
+.seo-panel textarea {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+}
 .settings-notice {
   background: var(--soft);
   color: var(--muted);

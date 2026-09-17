@@ -1,6 +1,7 @@
 import { compressProductImage } from './product-image.js';
 import { createAdsManager } from './ads.js';
 import { prepareAdImage, isGifUpload } from './ad-image.js';
+import { buildSeoMarkup, MAX_FOOTER_SEO_CODE } from '../shared/seo.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (v) =>
@@ -599,7 +600,7 @@ function settingsPage() {
       .map(([n, k]) => field(n, k, s[k], { type: 'email', required: true }))
       .join(
         '',
-      )}</div></section><button class="btn" type="submit">${icon('check')} Save brand settings</button></form>`
+      )}</div></section><section class="form-panel seo-panel"><h2>Footer SEO code</h2><p class="seo-help">Tekkatha automatically adds Organization, WebSite, and WebPage structured data below the footer. Page titles, descriptions, and canonical URLs update as readers navigate.</p><details class="seo-preview"><summary>View the automatic SEO HTML</summary><pre><code>${esc(buildSeoMarkup({ settings: s, url: WEBSITE, title: s.siteName + ' — Tech News, Reviews, Prices & Buying Guides' }))}</code></pre></details>${field('Additional SEO HTML & scripts', 'footerSeoCode', s.footerSeoCode || '', { type: 'textarea', rows: 12, max: MAX_FOOTER_SEO_CODE, hint: 'Paste complete HTML or &lt;script&gt; blocks, including JSON-LD. Up to 50,000 characters. Code runs once per page load across the public website. Clear this box and save to remove your additional code. Place title and meta descriptions in Publication identity above.' })}</section><button class="btn" type="submit">${icon('check')} Save brand settings</button></form>`
   );
 }
 function bindSettings() {

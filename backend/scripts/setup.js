@@ -50,6 +50,7 @@ try {
           editorialEmail: 'editorial@tekkatha.com',
           advertiseEmail: 'advertise@tekkatha.com',
           supportEmail: 'support@tekkatha.com',
+          footerSeoCode: '',
           updatedAt: new Date(),
         },
       },

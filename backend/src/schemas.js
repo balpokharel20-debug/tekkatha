@@ -4,6 +4,7 @@ import { isEncodedProductImage } from './product-image.js';
 import { AD_PLACEMENTS } from '../../shared/ads.js';
 import { MAX_AD_IMAGE_TEXT } from '../../shared/ad-image.js';
 import { isEncodedAdGif } from './ad-image.js';
+import { MAX_FOOTER_SEO_CODE } from '../../shared/seo.js';
 const text = (min, max) => z.string().trim().min(min).max(max);
 const image = z
   .string()
@@ -130,6 +131,7 @@ export const settingsSchema = z
     editorialEmail: z.email(),
     advertiseEmail: z.email(),
     supportEmail: z.email(),
+    footerSeoCode: z.string().max(MAX_FOOTER_SEO_CODE).default(''),
   })
   .strict();
 export const loginSchema = z

@@ -1,5 +1,6 @@
 'use strict';
 import { createAdDisplay } from './ads.js';
+import { createFooterSeo } from './seo.js';
 const $ = (selector, root = document) => root.querySelector(selector);
 const esc = (value) =>
   String(value).replace(
@@ -61,6 +62,7 @@ let siteSettings = {
   editorialEmail: 'editorial@tekkatha.com',
   advertiseEmail: 'advertise@tekkatha.com',
   supportEmail: 'support@tekkatha.com',
+  footerSeoCode: '',
 };
 let catalogState = { query: '', type: 'All', brand: 'All', budget: 'all', sort: 'featured' };
 let showDifferences = false;
@@ -162,6 +164,7 @@ function render() {
   const path = location.pathname.replace(/\/$/, '') || '/';
   let content;
   let pageTitle = '';
+  let pageDescription = siteSettings.description;
   if (path === '/') content = homepage();
   else if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) {
     content = catalogPage(path);
@@ -186,11 +189,16 @@ function render() {
   } else if (path.startsWith('/product/')) {
     const p = products.find((p) => p.id === path.split('/')[2]);
     content = p ? productPage(p) : notFound();
-    pageTitle = p ? `${esc(p.brand)} ${esc(p.name)}` : 'Page not found';
+    pageTitle = p ? `${p.brand} ${p.name}` : 'Page not found';
+    if (p)
+      pageDescription =
+        p.note ||
+        `${p.brand} ${p.name}: specifications, price records in Nepal, and product comparisons on ${siteSettings.siteName}.`;
   } else if (path.startsWith('/article/')) {
     const a = articles.find((a) => a.id === path.split('/')[2]);
     content = a ? articlePage(a) : notFound();
     pageTitle = a?.title || 'Page not found';
+    if (a?.excerpt) pageDescription = a.excerpt;
   } else if (path === '/compare') {
     content = comparePage();
     pageTitle = 'Compare Products';
@@ -221,6 +229,12 @@ function render() {
   if (path === '/ai') bindAi();
   if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) bindCatalog(path);
   if (path === '/compare') bindCompare();
+  footerSeo.update({
+    settings: siteSettings,
+    url: location.href,
+    title: document.title,
+    description: pageDescription,
+  });
 }
 function navigate(path) {
   history.pushState({}, '', path);
@@ -978,5 +992,6 @@ async function boot() {
   }
 }
 const adDisplay = createAdDisplay({ api, apiBase: API_BASE });
+const footerSeo = createFooterSeo();
 adDisplay.start();
 boot();
