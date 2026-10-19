@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { connect, client } from '../src/db.js';
 import { hashPassword } from '../src/auth.js';
+import { DEFAULT_BRAND_SETTINGS } from '../../shared/brand-settings.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 try {
   await access(path.join(root, 'backend/.env'));
@@ -38,19 +39,7 @@ try {
       { id: 'brand' },
       {
         $setOnInsert: {
-          id: 'brand',
-          siteName: 'Tekkatha',
-          tagline: 'Technology, Explained.',
-          description:
-            'Tekkatha covers the latest technology news, smartphone and laptop prices, gadget reviews, product comparisons, PC builds, AI, gaming, and buying guides.',
-          primaryColor: '#1357D6',
-          aiName: 'Tekkatha AI',
-          adminName: 'Tekkatha CMS',
-          contactEmail: 'contact@tekkatha.com',
-          editorialEmail: 'editorial@tekkatha.com',
-          advertiseEmail: 'advertise@tekkatha.com',
-          supportEmail: 'support@tekkatha.com',
-          footerSeoCode: '',
+          ...DEFAULT_BRAND_SETTINGS,
           updatedAt: new Date(),
         },
       },

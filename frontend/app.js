@@ -3,6 +3,7 @@ import { createAdDisplay } from './ads.js';
 import { createFooterSeo } from './seo.js';
 import { renderProductText } from '../shared/product-content.js';
 import { formatNpr } from '../shared/currency.js';
+import { DEFAULT_BRAND_SETTINGS } from '../shared/brand-settings.js';
 import { createAnalytics } from './analytics.js';
 import { createPopupNotice } from './popup.js';
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -58,17 +59,7 @@ let articles = [];
 let products = [];
 const productDetails = new Map();
 let selected = [];
-let siteSettings = {
-  siteName: 'Tekkatha',
-  tagline: 'Technology, Explained.',
-  aiName: 'Tekkatha AI',
-  description: '',
-  contactEmail: 'contact@tekkatha.com',
-  editorialEmail: 'editorial@tekkatha.com',
-  advertiseEmail: 'advertise@tekkatha.com',
-  supportEmail: 'support@tekkatha.com',
-  footerSeoCode: '',
-};
+let siteSettings = { ...DEFAULT_BRAND_SETTINGS };
 let catalogState = { query: '', type: 'All', brand: 'All', budget: 'all', sort: 'featured' };
 let showDifferences = false;
 let aiMessages = [];

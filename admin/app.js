@@ -4,6 +4,7 @@ import { createPopupNoticesManager } from './popup.js';
 import { prepareAdImage, isGifUpload } from './ad-image.js';
 import { buildSeoMarkup, MAX_FOOTER_SEO_CODE } from '../shared/seo.js';
 import { MAX_PRODUCT_CONTENT_TEXT } from '../shared/product-content.js';
+import { withDefaultBrandSettings } from '../shared/brand-settings.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (v) =>
@@ -177,7 +178,7 @@ async function loadView() {
   layout('<div class="loading">Loading your workspace…</div>');
   history.replaceState({}, '', ADMIN_HOME + (view === 'overview' ? '' : '#' + view));
   try {
-    if (!settings) settings = await api('/settings');
+    if (!settings) settings = withDefaultBrandSettings(await api('/settings'));
     document.title = settings?.adminName || 'Tekkatha CMS';
     if (view === 'overview') {
       const [s, entries] = await Promise.all([api('/admin/stats'), api('/admin/articles?limit=5')]);
@@ -195,7 +196,7 @@ async function loadView() {
     } else if (view === 'analytics') {
       layout(analyticsPage(await api('/admin/analytics?days=30')));
     } else if (view === 'settings') {
-      settings = await api('/settings');
+      settings = withDefaultBrandSettings(await api('/settings'));
       layout(settingsPage());
       bindSettings();
     } else if (view === 'admins' && admin?.role === 'super_admin') {

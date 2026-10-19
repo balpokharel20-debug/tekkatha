@@ -2,6 +2,7 @@ import { connect, client } from '../src/db.js';
 import { validateProductionConfig } from '../src/config.js';
 import { hashPassword } from '../src/auth.js';
 import { adminCreateSchema } from '../src/schemas.js';
+import { DEFAULT_BRAND_SETTINGS } from '../../shared/brand-settings.js';
 
 if (process.env.NODE_ENV !== 'production') {
   console.error('Set NODE_ENV=production before running this initializer.');
@@ -11,6 +12,11 @@ if (process.env.NODE_ENV !== 'production') {
 try {
   validateProductionConfig();
   const database = await connect();
+  await database.collection('settings').updateOne(
+    { id: 'brand' },
+    { $setOnInsert: { ...DEFAULT_BRAND_SETTINGS, updatedAt: new Date() } },
+    { upsert: true },
+  );
   if (await database.collection('admins').countDocuments()) {
     console.log('Administrator account already exists; no account or content was changed.');
   } else {

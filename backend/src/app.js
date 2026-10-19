@@ -43,6 +43,7 @@ import {
 import { answerQuestion } from './assistant.js';
 import { renderArticleDocument, renderProductDocument } from './prerender.js';
 import { getPublicProductImage, publicProduct } from './product-image.js';
+import { DEFAULT_BRAND_SETTINGS } from '../../shared/brand-settings.js';
 export const app = express();
 app.set('trust proxy', config.trustProxyHops);
 if (config.runningOnVercel) {
@@ -134,7 +135,7 @@ app.get('/api/health', async (_req, res, next) => {
 });
 app.get('/api/settings', async (_req, res, next) => {
   try {
-    res.json(publicRecord(await db.collection('settings').findOne({ id: 'brand' })));
+    res.json(publicRecord(await db.collection('settings').findOne({ id: 'brand' })) || DEFAULT_BRAND_SETTINGS);
   } catch (e) {
     next(e);
   }
