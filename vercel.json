@@ -1,10 +1,23 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "express",
+  "framework": null,
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/cms", "destination": "/cms/index.html" },
-    { "source": "/cms/hello", "destination": "/cms/index.html" }
+    { "source": "/cms/:path*", "destination": "/cms/index.html" },
+    { "source": "/api", "destination": "/api/index?__vercel_path=/api" },
+    { "source": "/api/:path*", "destination": "/api/index?__vercel_path=/api/:path*" },
+    { "source": "/article/:id", "destination": "/api/index?__vercel_path=/article/:id" },
+    { "source": "/product/:id", "destination": "/api/index?__vercel_path=/product/:id" },
+    { "source": "/robots.txt", "destination": "/api/index?__vercel_path=/robots.txt" },
+    { "source": "/sitemap.xml", "destination": "/api/index?__vercel_path=/sitemap.xml" },
+    { "source": "/sitemap_index.xml", "destination": "/api/index?__vercel_path=/sitemap_index.xml" },
+    { "source": "/sitemap.xsl", "destination": "/api/index?__vercel_path=/sitemap.xsl" },
+    { "source": "/page-sitemap.xml", "destination": "/api/index?__vercel_path=/page-sitemap.xml" },
+    { "source": "/post-sitemap.xml", "destination": "/api/index?__vercel_path=/post-sitemap.xml" },
+    { "source": "/product-sitemap.xml", "destination": "/api/index?__vercel_path=/product-sitemap.xml" },
+    { "source": "/", "destination": "/api/index?__vercel_path=/" },
+    { "source": "/:path*", "destination": "/api/index?__vercel_path=/:path*" }
   ]
 }
