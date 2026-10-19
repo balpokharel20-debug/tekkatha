@@ -72,7 +72,7 @@ GitHub Actions runs the backend test suite, builds both browser apps, and builds
 
 ### Vercel
 
-The repository also supports a single Vercel project for the public site, API, and CMS. From the repository root, use `npm run build:vercel` as the build command and leave the output directory unset. Vercel serves the public site and CMS assets from `public/` and runs the Express API and server-rendered pages through the root `app.js` function. The CMS is available at `/cms/hello`; it shares the public site's HTTPS origin and session cookie.
+The repository also supports a single Vercel project for the public site, API, and CMS. Set the Vercel Root Directory to the repository root, use `npm run build:vercel` as the build command, and leave the output directory unset. Vercel serves the public site and CMS assets from `public/` and detects the root `app.js` as the Express application. The CMS is available at `/cms/hello`; it shares the public site's HTTPS origin and session cookie.
 
 Add `MONGODB_URI` and `MONGODB_DATABASE` as Production environment variables in the Vercel project. Use a remote MongoDB deployment with TLS, a least-privilege user, backups, and network access configured for Vercel. Expose Vercel's project URL system environment variables so the generated production URL is used as the canonical origin. After choosing a custom domain, set `PUBLIC_SITE_URL` and `ALLOWED_ORIGINS` to the HTTPS site origin; for this single-origin setup, both values can be that same origin. Keep database and AI credentials in Vercel's encrypted environment settings, never in Git or chat.
 
