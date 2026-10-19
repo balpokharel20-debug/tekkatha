@@ -1,0 +1,13 @@
+.git
+.sites-runtime
+.local
+node_modules
+**/node_modules
+**/.env
+**/.env.*
+frontend/dist
+admin/dist
+dist
+coverage
+qa
+*.zip

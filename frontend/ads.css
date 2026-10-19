@@ -7,34 +7,23 @@
   background: var(--paper);
 }
 .ad-placement[hidden],
+.ad-caption[hidden],
 .ad-rotation-tools[hidden] {
   display: none;
 }
 .ad-caption {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   padding: 8px 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
-.ad-caption > div:first-child {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: center;
-}
-.ad-caption span,
-.ad-advertiser {
+.ad-caption span {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.5;
-}
-.ad-advertiser {
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 .ad-rotation-tools {
   display: flex;

@@ -1,0 +1,12 @@
+# Replace both example hostnames with the matching values in production.env.
+www.example.com {
+	header Strict-Transport-Security "max-age=31536000"
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8080
+}
+
+cms.example.com {
+	header Strict-Transport-Security "max-age=31536000"
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8081
+}

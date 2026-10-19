@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:vercel",
+  "functions": {
+    "app.js": {
+      "includeFiles": "{frontend/dist/index.html,backend/src/sitemap.xsl}",
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/cms", "destination": "/cms/index.html" },
+    { "source": "/cms/hello", "destination": "/cms/index.html" }
+  ]
+}

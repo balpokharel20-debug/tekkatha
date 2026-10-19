@@ -5,28 +5,66 @@ import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 import { ZodError, z } from 'zod';
 import { randomBytes } from 'node:crypto';
-import { db, publicRecord } from './db.js';
-import { config } from './config.js';
+import { readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+import { connect, db, publicRecord } from './db.js';
+import { config, validateProductionConfig } from './config.js';
+import {
+  sitemapPages,
+  buildSitemapIndex,
+  buildUrlSet,
+  buildRobots,
+  recordEntries,
+} from './sitemap.js';
 import {
   cookieName,
   cookieOptions,
   verifyPassword,
+  hashPassword,
   createSession,
   requireAdmin,
+  requireSuperAdmin,
   verifyOrigin,
 } from './auth.js';
 import {
   articleSchema,
   productSchema,
   adSchema,
+  popupNoticeSchema,
   settingsSchema,
   loginSchema,
+  adminCreateSchema,
+  analyticsBatchSchema,
+  assistantRequestSchema,
   slug,
   pagination,
   searchRegex,
 } from './schemas.js';
 import { answerQuestion } from './assistant.js';
+import { renderArticleDocument, renderProductDocument } from './prerender.js';
+import { getPublicProductImage, publicProduct } from './product-image.js';
 export const app = express();
+app.set('trust proxy', config.trustProxyHops);
+if (config.runningOnVercel) {
+  let initialization;
+  app.use((_req, _res, next) => {
+    if (!initialization) {
+      initialization = (async () => {
+        validateProductionConfig();
+        await connect();
+      })().catch((error) => {
+        initialization = undefined;
+        throw error;
+      });
+    }
+    initialization.then(() => next(), next);
+  });
+}
+const sitemapStylesheet = readFileSync(new URL('./sitemap.xsl', import.meta.url), 'utf8');
+const publicDocumentUrl = new URL('../../frontend/dist/index.html', import.meta.url);
+export const publicDocumentTemplate = existsSync(publicDocumentUrl)
+  ? readFileSync(publicDocumentUrl, 'utf8')
+  : '';
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(
@@ -36,6 +74,7 @@ app.use(
   }),
 );
 app.use('/api/admin/ads', express.json({ limit: '3mb' }));
+app.use('/api/admin/products', express.json({ limit: config.runningOnVercel ? '4mb' : '10mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(
@@ -46,10 +85,49 @@ app.use('/api', (_req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
+const articleSitemapFilter = { status: 'published', deletedAt: null };
+const productSitemapFilter = { deletedAt: null };
+const sitemapProjection = { projection: { _id: 0, id: 1, createdAt: 1, updatedAt: 1 } };
+function sendXml(res, value) {
+  res.set('Cache-Control', 'public, max-age=300').type('application/xml').send(value);
+}
+app.get('/robots.txt', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300').type('text/plain').send(buildRobots(config.publicSiteUrl));
+});
+app.get('/sitemap.xsl', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400').type('text/xsl').send(sitemapStylesheet);
+});
+app.get('/sitemap.xml', (_req, res) => res.redirect(308, '/sitemap_index.xml'));
+app.get('/sitemap_index.xml', async (_req, res, next) => {
+  try {
+    const [article, product] = await Promise.all([
+      db.collection('articles').find(articleSitemapFilter, sitemapProjection).sort({ updatedAt: -1 }).limit(1).next(),
+      db.collection('products').find(productSitemapFilter, sitemapProjection).sort({ updatedAt: -1 }).limit(1).next(),
+    ]);
+    sendXml(res, buildSitemapIndex(config.publicSiteUrl, {
+      articleUpdatedAt: article?.updatedAt || article?.createdAt,
+      productUpdatedAt: product?.updatedAt || product?.createdAt,
+    }));
+  } catch (error) { next(error); }
+});
+app.get('/page-sitemap.xml', (_req, res) => {
+  sendXml(res, buildUrlSet(config.publicSiteUrl, sitemapPages.map((path) => ({ path }))));
+});
+for (const [path, collection, filter, type] of [
+  ['/post-sitemap.xml', 'articles', articleSitemapFilter, 'article'],
+  ['/product-sitemap.xml', 'products', productSitemapFilter, 'product'],
+]) {
+  app.get(path, async (_req, res, next) => {
+    try {
+      const records = await db.collection(collection).find(filter, sitemapProjection).sort({ createdAt: -1 }).toArray();
+      sendXml(res, buildUrlSet(config.publicSiteUrl, recordEntries(records, type)));
+    } catch (error) { next(error); }
+  });
+}
 app.get('/api/health', async (_req, res, next) => {
   try {
     await db.command({ ping: 1 });
-    res.json({ status: 'ok', database: 'connected', databaseName: config.database });
+    res.json({ status: 'ok', database: 'connected' });
   } catch (e) {
     next(e);
   }
@@ -90,6 +168,35 @@ app.get('/api/ads/:id/image', async (req, res, next) => {
     res.set('Cross-Origin-Resource-Policy', 'cross-origin').set('Cache-Control', 'public, max-age=60').type(encoded[1]).send(Buffer.from(encoded[2], 'base64'));
   } catch (error) { next(error); }
 });
+function runningPopupFilter() {
+  const now = new Date().toISOString();
+  return {
+    active: true,
+    deletedAt: null,
+    $and: [
+      { $or: [{ startsAt: '' }, { startsAt: { $lte: now } }] },
+      { $or: [{ endsAt: '' }, { endsAt: { $gt: now } }] },
+    ],
+  };
+}
+app.get('/api/popup-notice', async (_req, res, next) => {
+  try {
+    const notice = await db.collection('notices').findOne(runningPopupFilter(), { sort: { updatedAt: -1 } });
+    if (!notice) return res.json(null);
+    const value = publicRecord(notice);
+    if (value.image?.startsWith('data:image/'))
+      value.image = '/api/popup-notice/' + encodeURIComponent(value.id) + '/image?v=' + new Date(value.updatedAt).getTime();
+    res.json(value);
+  } catch (error) { next(error); }
+});
+app.get('/api/popup-notice/:id/image', async (req, res, next) => {
+  try {
+    const notice = await db.collection('notices').findOne({ ...runningPopupFilter(), id: req.params.id });
+    const encoded = notice?.image?.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/);
+    if (!encoded) return res.status(404).json({ error: 'This popup image was not found.' });
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin').set('Cache-Control', 'public, max-age=60').type(encoded[1]).send(Buffer.from(encoded[2], 'base64'));
+  } catch (error) { next(error); }
+});
 for (const name of ['articles', 'products']) {
   app.get('/api/' + name, async (req, res, next) => {
     try {
@@ -118,14 +225,19 @@ for (const name of ['articles', 'products']) {
       const [items, total] = await Promise.all([
         db
           .collection(name)
-          .find(filter)
+          .find(
+            filter,
+            name === 'products'
+              ? { projection: { description: 0, review: 0, reviewBlocks: 0 } }
+              : {},
+          )
           .sort(sort)
           .skip((page - 1) * limit)
           .limit(limit)
           .toArray(),
         db.collection(name).countDocuments(filter),
       ]);
-      res.json({ items: items.map(publicRecord), total, page, limit });
+      res.json({ items: items.map(name === 'products' ? publicProduct : publicRecord), total, page, limit });
     } catch (e) {
       next(e);
     }
@@ -140,23 +252,98 @@ for (const name of ['articles', 'products']) {
           ...(name === 'articles' ? { status: 'published' } : {}),
         });
       if (!record) return res.status(404).json({ error: 'This entry was not found.' });
-      res.json(publicRecord(record));
+      res.json(name === 'products' ? publicProduct(record) : publicRecord(record));
     } catch (e) {
       next(e);
     }
   });
 }
+app.get('/api/products/:id/image/:slot', async (req, res, next) => {
+  try {
+    const product = await db.collection('products').findOne({ id: req.params.id, deletedAt: null });
+    const image = getPublicProductImage(product, req.params.slot);
+    if (!image) return res.status(404).json({ error: 'This product image was not found.' });
+    res.set('Cache-Control', 'public, max-age=86400').type(image.type).send(image.bytes);
+  } catch (error) {
+    next(error);
+  }
+});
+app.get('/article/:id', async (req, res, next) => {
+  try {
+    if (!publicDocumentTemplate) return res.status(503).type('text/plain').send('Public site build is unavailable.');
+    const article = await db.collection('articles').findOne({
+      id: req.params.id,
+      status: 'published',
+      deletedAt: null,
+    });
+    if (!article) return res.status(404).type('text/html').send(publicDocumentTemplate);
+    const settings = await db.collection('settings').findOne({ id: 'brand' });
+    res
+      .set('Cache-Control', 'public, max-age=0, must-revalidate')
+      .type('html')
+      .send(renderArticleDocument({
+        template: publicDocumentTemplate,
+        article,
+        settings: {
+          siteName: settings?.siteName || 'Tekkatha',
+          tagline: settings?.tagline || 'Technology, Explained.',
+          description: settings?.description || 'Technology news, product reviews, prices, comparisons, and buying guides.',
+        },
+        siteUrl: config.publicSiteUrl,
+      }));
+  } catch (error) {
+    next(error);
+  }
+});
+app.get('/product/:id', async (req, res, next) => {
+  try {
+    if (!publicDocumentTemplate) return res.status(503).type('text/plain').send('Public site build is unavailable.');
+    const record = await db.collection('products').findOne({
+      id: req.params.id,
+      deletedAt: null,
+    });
+    if (!record) return res.status(404).type('text/html').send(publicDocumentTemplate);
+    const settings = await db.collection('settings').findOne({ id: 'brand' });
+    res
+      .set('Cache-Control', 'public, max-age=0, must-revalidate')
+      .type('html')
+      .send(renderProductDocument({
+        template: publicDocumentTemplate,
+        product: publicProduct(record),
+        settings: {
+          siteName: settings?.siteName || 'Tekkatha',
+          tagline: settings?.tagline || 'Technology, Explained.',
+          description: settings?.description || 'Technology news, product reviews, prices, comparisons, and buying guides.',
+        },
+        siteUrl: config.publicSiteUrl,
+      }));
+  } catch (error) {
+    next(error);
+  }
+});
 app.post(
   '/api/assistant',
   verifyOrigin,
-  rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false }),
+  rateLimit({ windowMs: 60000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false }),
   async (req, res, next) => {
     try {
-      const { question } = z
-        .object({ question: z.string().trim().min(1).max(1000) })
-        .strict()
-        .parse(req.body);
-      res.json(await answerQuestion(question));
+      const { question, history, contextProductIds } = assistantRequestSchema.parse(req.body);
+      res.json(await answerQuestion(question, { history, contextProductIds }));
+    } catch (e) {
+      next(e);
+    }
+  },
+);
+app.post(
+  '/api/analytics/events',
+  verifyOrigin,
+  rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }),
+  async (req, res, next) => {
+    try {
+      const { events } = analyticsBatchSchema.parse(req.body);
+      const now = new Date();
+      await db.collection('analytics').insertMany(events.map((event) => ({ ...event, createdAt: now })));
+      res.status(204).end();
     } catch (e) {
       next(e);
     }
@@ -193,10 +380,41 @@ app.post('/api/auth/logout', verifyOrigin, requireAdmin, async (req, res, next) 
   }
 });
 app.use('/api/admin', verifyOrigin, requireAdmin);
-app.patch('/api/admin/ads/:id/active', async (req, res, next) => {
+app.get('/api/admin/admins', requireSuperAdmin, async (_req, res, next) => {
   try {
+    const admins = await db
+      .collection('admins')
+      .find({}, { projection: { passwordHash: 0 } })
+      .sort({ createdAt: 1 })
+      .toArray();
+    res.json({ admins: admins.map(publicRecord) });
+  } catch (e) {
+    next(e);
+  }
+});
+app.post('/api/admin/admins', requireSuperAdmin, async (req, res, next) => {
+  try {
+    const value = adminCreateSchema.parse(req.body);
+    if (await db.collection('admins').findOne({ email: value.email }))
+      return res.status(409).json({ error: 'An administrator with that email already exists.' });
+    const { password, ...profile } = value;
+    const record = {
+      ...profile,
+      passwordHash: await hashPassword(password),
+      createdAt: new Date(),
+    };
+    const result = await db.collection('admins').insertOne(record);
+    res.status(201).json({ admin: publicRecord({ ...record, id: result.insertedId.toString() }) });
+  } catch (e) {
+    next(e);
+  }
+});
+app.patch('/api/admin/:collection/:id/active', async (req, res, next) => {
+  try {
+    if (!['ads', 'notices'].includes(req.params.collection))
+      return res.status(404).json({ error: 'This collection was not found.' });
     const value = z.object({ active: z.boolean() }).strict().parse(req.body);
-    const record = await db.collection('ads').findOneAndUpdate(
+    const record = await db.collection(req.params.collection).findOneAndUpdate(
       { id: req.params.id, deletedAt: null },
       { $set: { ...value, updatedAt: new Date() } },
       { returnDocument: 'after' },
@@ -219,19 +437,55 @@ app.get('/api/admin/stats', async (_req, res, next) => {
     next(e);
   }
 });
+app.get('/api/admin/analytics', async (req, res, next) => {
+  try {
+    const days = Math.max(1, Math.min(90, Number.parseInt(req.query.days, 10) || 30));
+    const start = new Date(Date.now() - days * 86400000);
+    const events = await db.collection('analytics').find({ createdAt: { $gte: start } }, {
+      projection: { _id: 0, visitorId: 1, type: 1, path: 1, durationSec: 1, deviceType: 1, browser: 1, os: 1, language: 1, timezone: 1, createdAt: 1 },
+    }).sort({ createdAt: -1 }).limit(100000).toArray();
+    const pageviews = events.filter((event) => event.type === 'pageview');
+    const sessions = events.filter((event) => event.type === 'session_end' && event.durationSec > 0);
+    const countBy = (items, key) => Object.entries(items.reduce((counts, item) => {
+      const value = item[key] || 'Unknown';
+      counts[value] = (counts[value] || 0) + 1;
+      return counts;
+    }, {})).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([label, count]) => ({ label, count }));
+    const daily = pageviews.reduce((counts, event) => {
+      const day = new Date(event.createdAt).toISOString().slice(0, 10);
+      counts[day] = (counts[day] || 0) + 1;
+      return counts;
+    }, {});
+    res.json({
+      days,
+      pageViews: pageviews.length,
+      uniqueVisitors: new Set(pageviews.map((event) => event.visitorId)).size,
+      averageDurationSec: sessions.length ? Math.round(sessions.reduce((sum, event) => sum + event.durationSec, 0) / sessions.length) : 0,
+      topPages: countBy(pageviews, 'path'),
+      devices: countBy(pageviews, 'deviceType'),
+      browsers: countBy(pageviews, 'browser'),
+      operatingSystems: countBy(pageviews, 'os'),
+      languages: countBy(pageviews, 'language'),
+      dailyViews: Object.entries(daily).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count })),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 for (const [name, schema] of [
   ['articles', articleSchema],
   ['products', productSchema],
   ['ads', adSchema],
+  ['notices', popupNoticeSchema],
 ]) {
   app.get('/api/admin/' + name, async (req, res, next) => {
     try {
       const { page, limit } = pagination(req.query);
       const filter =
-        name === 'ads' && req.query.includeArchived === 'true' ? {} :
+        ['ads', 'notices'].includes(name) && req.query.includeArchived === 'true' ? {} :
         req.query.archived === 'true' ? { deletedAt: { $ne: null } } : { deletedAt: null };
       if (typeof req.query.q === 'string' && req.query.q.trim())
-        filter.$or = (name === 'articles' ? ['title', 'category'] : name === 'ads' ? ['title', 'advertiser'] : ['name', 'brand']).map(
+        filter.$or = (name === 'articles' ? ['title', 'category'] : name === 'ads' ? ['title', 'advertiser'] : name === 'notices' ? ['title', 'body'] : ['name', 'brand']).map(
           (key) => ({ [key]: searchRegex(req.query.q) }),
         );
       if (name === 'articles' && ['draft', 'published'].includes(req.query.status))
@@ -239,7 +493,12 @@ for (const [name, schema] of [
       const [items, total] = await Promise.all([
         db
           .collection(name)
-          .find(filter)
+          .find(
+            filter,
+            name === 'products'
+              ? { projection: { description: 0, review: 0, reviewBlocks: 0 } }
+              : {},
+          )
           .sort({ updatedAt: -1 })
           .skip((page - 1) * limit)
           .limit(limit)
@@ -263,6 +522,7 @@ for (const [name, schema] of [
         id,
         createdAt: new Date(),
         updatedAt: new Date(),
+        ...(name === 'articles' && value.status === 'published' ? { publishedAt: new Date() } : {}),
         deletedAt: null,
       };
       await db.collection(name).insertOne(record);
@@ -274,14 +534,24 @@ for (const [name, schema] of [
   app.put('/api/admin/' + name + '/:id', async (req, res, next) => {
     try {
       const value = schema.parse(req.body);
-      const record = await db
-        .collection(name)
-        .findOneAndUpdate(
-          { id: req.params.id, deletedAt: null },
-          // One image field is overwritten atomically; no previous upload is retained.
-          { $set: { ...value, updatedAt: new Date() } },
-          { returnDocument: 'after' },
-        );
+      const collection = db.collection(name);
+      const filter = { id: req.params.id, deletedAt: null };
+      const existing = name === 'articles' ? await collection.findOne(filter) : null;
+      const updatedAt = new Date();
+      const update = {
+        // One image field is overwritten atomically; no previous upload is retained.
+        $set: { ...value, updatedAt },
+      };
+      if (name === 'articles') {
+        if (value.status === 'published') {
+          update.$set.publishedAt = existing?.status === 'published'
+            ? existing.publishedAt || existing.createdAt || updatedAt
+            : updatedAt;
+        } else {
+          update.$unset = { publishedAt: '' };
+        }
+      }
+      const record = await collection.findOneAndUpdate(filter, update, { returnDocument: 'after' });
       if (!record) return res.status(404).json({ error: 'This entry was not found.' });
       res.json(publicRecord(record));
     } catch (e) {
@@ -321,6 +591,14 @@ for (const [name, schema] of [
 app.put('/api/admin/settings', async (req, res, next) => {
   try {
     const value = settingsSchema.parse(req.body);
+    if (req.admin.role !== 'super_admin') {
+      const current = await db.collection('settings').findOne(
+        { id: 'brand' },
+        { projection: { _id: 0, footerSeoCode: 1 } },
+      );
+      if ((current?.footerSeoCode || '') !== value.footerSeoCode)
+        return res.status(403).json({ error: 'Only a super administrator can change public site scripts.' });
+    }
     await db
       .collection('settings')
       .updateOne({ id: 'brand' }, { $set: { ...value, updatedAt: new Date() } }, { upsert: true });
@@ -328,6 +606,12 @@ app.put('/api/admin/settings', async (req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD'].includes(req.method) || req.path === '/api' || req.path.startsWith('/api/'))
+    return next();
+  if (!publicDocumentTemplate) return res.status(404).type('text/plain').send('Page not found.');
+  res.status(200).type('html').send(publicDocumentTemplate);
 });
 app.use((_req, res) => res.status(404).json({ error: 'API route not found.' }));
 app.use((err, _req, res, _next) => {

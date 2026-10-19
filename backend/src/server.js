@@ -1,7 +1,12 @@
 import { connect, client } from './db.js';
-import { app } from './app.js';
-import { config } from './config.js';
+import { app, publicDocumentTemplate } from './app.js';
+import { config, validateProductionConfig } from './config.js';
 try {
+  if (config.production) {
+    validateProductionConfig();
+    if (!publicDocumentTemplate)
+      throw new Error('Build the public frontend before starting the production API.');
+  }
   await connect();
   const server = app.listen(config.port, config.host, () =>
     console.log(

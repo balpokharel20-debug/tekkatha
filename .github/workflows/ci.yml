@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      SITE_ORIGIN: https://www.example.com
+      CMS_ORIGIN: https://cms.example.com
+      MONGODB_URI: mongodb+srv://ci:ci@cluster.example.mongodb.net/tekkatha
+      MONGODB_DATABASE: tekkatha
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: docker compose build

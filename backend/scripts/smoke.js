@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { connect, client } from '../src/db.js';
 import { redImage, blueImage } from '../test/fixtures/images.js';
+import { MAX_PRODUCT_CONTENT_TEXT } from '../../shared/product-content.js';
 const base = 'http://127.0.0.1:4000/api';
 const origin = 'http://localhost:5174';
 let cookie = '',
@@ -99,19 +100,57 @@ try {
     camera: 'Test camera',
     source: 'https://example.com/specifications',
     note: 'Temporary integration-test product.',
+    description: 'Design and features\n\n' + 'Detailed device description. '.repeat(1000),
+    review: 'Performance and battery\nSecond line\n\n' + 'Full device review. '.repeat(1000),
   };
   result = await request('/admin/products', 'POST', product, true);
   assert.equal(result.status, 201);
   testIds.products.push(result.data.id);
   assert.equal((await request('/products/' + result.data.id)).data.price, 15000);
   assert.equal((await request('/products/' + result.data.id)).data.image, redImage);
+  assert.equal(
+    (await request('/products/' + result.data.id)).data.description,
+    product.description,
+  );
+  assert.equal((await request('/products/' + result.data.id)).data.review, product.review);
+  const summary = (
+    await request('/products?q=' + encodeURIComponent(product.name))
+  ).data.items.find((item) => item.id === result.data.id);
+  assert.ok(summary);
+  assert.equal(Object.hasOwn(summary, 'description'), false);
+  assert.equal(Object.hasOwn(summary, 'review'), false);
   const productId = result.data.id;
+  // Escaped text reaches >1 MB even without a large image, exercising the
+  // dedicated product parser while remaining within both character limits.
+  const largeDescription = '\u0001'.repeat(MAX_PRODUCT_CONTENT_TEXT);
+  const largeReview = '\u0002'.repeat(MAX_PRODUCT_CONTENT_TEXT);
+  assert.ok(
+    Buffer.byteLength(
+      JSON.stringify({ ...product, description: largeDescription, review: largeReview }),
+    ) >
+      1024 * 1024,
+  );
   assert.equal(
     (
       await request(
         '/admin/products/' + productId,
         'PUT',
-        { ...product, price: 23000, image: blueImage },
+        { ...product, description: largeDescription, review: largeReview },
+        true,
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await request('/products/' + productId)).data.description, largeDescription);
+  assert.equal((await request('/products/' + productId)).data.review, largeReview);
+  const description = 'Updated description\n\nNew device details.';
+  const review = 'Updated full review\nSecond line\n\nOur final verdict.';
+  assert.equal(
+    (
+      await request(
+        '/admin/products/' + productId,
+        'PUT',
+        { ...product, price: 23000, image: blueImage, description, review },
         true,
       )
     ).status,
@@ -119,6 +158,20 @@ try {
   );
   assert.equal((await request('/products/' + productId)).data.price, 23000);
   assert.equal((await request('/products/' + productId)).data.image, blueImage);
+  assert.equal((await request('/products/' + productId)).data.description, description);
+  assert.equal((await request('/products/' + productId)).data.review, review);
+  assert.equal(
+    (
+      await request(
+        '/admin/products/' + productId,
+        'PUT',
+        { ...product, review: 'x'.repeat(MAX_PRODUCT_CONTENT_TEXT + 1) },
+        true,
+      )
+    ).status,
+    400,
+  );
+  assert.equal((await request('/products/' + productId)).data.review, review);
   assert.equal(
     (
       await request(
@@ -141,11 +194,37 @@ try {
   assert.equal(savedProduct.price, 23000);
   assert.equal(typeof savedProduct.image, 'string');
   assert.equal(savedProduct.image, blueImage);
+  assert.equal(savedProduct.description, description);
+  assert.equal(savedProduct.review, review);
+  assert.equal(
+    JSON.stringify(savedProduct).includes(product.description),
+    false,
+    'old description text is removed',
+  );
+  assert.equal(
+    JSON.stringify(savedProduct).includes(product.review),
+    false,
+    'old review text is removed',
+  );
   assert.equal(JSON.stringify(savedProduct).includes(redImage), false, 'old image text is removed');
+  assert.equal(
+    (
+      await request(
+        '/admin/products/' + productId,
+        'PUT',
+        { ...product, description: '', review: '' },
+        true,
+      )
+    ).status,
+    200,
+  );
+  const cleared = (await request('/products/' + productId)).data;
+  assert.equal(cleared.description, '');
+  assert.equal(cleared.review, '');
   await request('/auth/logout', 'POST', {}, true);
   assert.equal((await request('/auth/me', 'GET', undefined, true)).status, 401);
   console.log(
-    'PASS: MongoDB persistence, admin auth, draft privacy, publishing, archive/restore, product creation, image text replacement, invalid image rejection, catalog assistant and logout.',
+    'PASS: MongoDB persistence, admin auth, draft privacy, publishing, archive/restore, product creation, long descriptions/reviews, large product uploads, catalog summaries, image/text replacement and clearing, invalid field rejection, catalog assistant and logout.',
   );
 } catch (error) {
   console.error('Integration check failed:', error.message);

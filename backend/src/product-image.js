@@ -34,3 +34,37 @@ export function isEncodedProductImage(value) {
     ['VP8 ', 'VP8L', 'VP8X'].includes(bytes.toString('ascii', 12, 16))
   );
 }
+
+function imageUrl(product, slot) {
+  const version = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
+  return `/api/products/${encodeURIComponent(product.id)}/image/${slot}?v=${version}`;
+}
+
+export function publicProduct(record) {
+  if (!record) return null;
+  const { _id, ...product } = record;
+  if (isEncodedProductImage(product.image)) product.image = imageUrl(product, 'main');
+  if (Array.isArray(product.reviewBlocks))
+    product.reviewBlocks = product.reviewBlocks.map((block, index) =>
+      block?.type === 'image' && isEncodedProductImage(block.image)
+        ? { ...block, image: imageUrl(product, `review-${index}`) }
+        : block,
+    );
+  return product;
+}
+
+export function getPublicProductImage(record, slot) {
+  if (!record || record.deletedAt) return null;
+  let value;
+  if (slot === 'main') value = record.image;
+  else {
+    const match = /^review-(\d{1,2})$/.exec(slot);
+    if (!match) return null;
+    const block = record.reviewBlocks?.[Number(match[1])];
+    if (block?.type !== 'image') return null;
+    value = block.image;
+  }
+  if (!isEncodedProductImage(value)) return null;
+  const [, subtype, encoded] = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  return { type: `image/${subtype}`, bytes: Buffer.from(encoded, 'base64') };
+}

@@ -3,6 +3,7 @@ node_modules/
 *.zip
 qa/
 .local/
+deploy/production.env
 .env
 .env.*
 !.env.example

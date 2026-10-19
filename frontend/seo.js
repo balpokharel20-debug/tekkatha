@@ -5,6 +5,16 @@ export function createFooterSeo() {
   const customCode = document.getElementById('footer-seo-code');
   let appliedCode;
 
+  function setMeta(attribute, name, content) {
+    let meta = document.head.querySelector(`meta[${attribute}="${name}"]`);
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute(attribute, name);
+      document.head.append(meta);
+    }
+    meta.setAttribute('content', content);
+  }
+
   async function activateScripts(scripts, code) {
     for (const original of scripts) {
       if (appliedCode !== code) return;
@@ -48,6 +58,37 @@ export function createFooterSeo() {
         document.head.append(canonical);
       }
       canonical.href = data['@graph'][2].url;
+
+      const page = data['@graph'][2];
+      const image = new URL(options.image || '/assets/mark.svg', options.url).href;
+      const imageAlt = options.imageAlt || `${options.settings.siteName} technology coverage`;
+      setMeta('property', 'og:site_name', options.settings.siteName);
+      setMeta('property', 'og:type', options.type || 'website');
+      setMeta('property', 'og:title', options.title);
+      setMeta('property', 'og:description', page.description);
+      setMeta('property', 'og:url', page.url);
+      setMeta('property', 'og:image', image);
+      setMeta('property', 'og:image:alt', imageAlt);
+      setMeta('property', 'og:locale', 'en_US');
+      setMeta('name', 'twitter:card', 'summary_large_image');
+      setMeta('name', 'twitter:title', options.title);
+      setMeta('name', 'twitter:description', page.description);
+      setMeta('name', 'twitter:image', image);
+      setMeta('name', 'twitter:image:alt', imageAlt);
+
+      const article = options.article?.status === 'published' && !options.article.isSample
+        ? options.article
+        : null;
+      for (const [property, value] of [
+        ['article:published_time', article?.publishedAt || article?.createdAt],
+        ['article:modified_time', article?.updatedAt || article?.publishedAt || article?.createdAt],
+        ['article:author', article?.author],
+        ['article:section', article?.category],
+      ]) {
+        const existing = document.head.querySelector(`meta[property="${property}"]`);
+        if (value) setMeta('property', property, value);
+        else existing?.remove();
+      }
 
       const code = options.settings.footerSeoCode || '';
       if (code === appliedCode) return;

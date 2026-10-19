@@ -32,12 +32,12 @@ export function createAdDisplay({ api, apiBase = '/api' }) {
     const ad = advance || !current ? rotation.next(slot.id, candidates) : current;
     if (advance || slot.ad?.id !== ad.id || slot.ad?.image !== ad.image) slot.elapsed = 0;
     slot.root.hidden = false;
-    slot.label.textContent = ad.advertiser;
     slot.link.href = ad.link;
     slot.link.setAttribute('aria-label', `${ad.advertiser}: ${ad.alt} (opens in a new tab)`);
     slot.image.alt = ad.alt;
     if (slot.ad?.image !== ad.image) slot.image.src = ad.image;
     slot.ad = ad;
+    slot.caption.hidden = candidates.length < 2;
     slot.tools.hidden = candidates.length < 2;
     slot.count.textContent = `${candidates.length} ads`;
     slot.pause.textContent = slot.paused ? 'Resume' : 'Pause';
@@ -58,14 +58,14 @@ export function createAdDisplay({ api, apiBase = '/api' }) {
     root.setAttribute('aria-label', placement.label + ' advertisement');
     root.hidden = true;
     root.innerHTML =
-      '<div class="ad-caption"><div><span>Advertisement</span><strong class="ad-advertiser"></strong></div><div class="ad-rotation-tools" hidden><span class="ad-count"></span><button type="button" class="ad-pause" aria-pressed="false">Pause</button><button type="button" class="ad-next" aria-label="Show next advertisement">Next</button></div></div><a class="ad-creative" target="_blank" rel="sponsored noopener noreferrer"><img loading="lazy" decoding="async" alt=""></a>';
+      '<div class="ad-caption" hidden><div class="ad-rotation-tools" hidden><span class="ad-count"></span><button type="button" class="ad-pause" aria-pressed="false">Pause</button><button type="button" class="ad-next" aria-label="Show next advertisement">Next</button></div></div><a class="ad-creative" target="_blank" rel="sponsored noopener noreferrer"><img loading="lazy" decoding="async" alt=""></a>';
     const slot = {
       id,
       root,
       paused: false,
       ad: null,
       elapsed: 0,
-      label: root.querySelector('.ad-advertiser'),
+      caption: root.querySelector('.ad-caption'),
       link: root.querySelector('.ad-creative'),
       image: root.querySelector('img'),
       tools: root.querySelector('.ad-rotation-tools'),

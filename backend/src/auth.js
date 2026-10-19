@@ -50,9 +50,7 @@ export async function requireAdmin(req, res, next) {
       .findOne({ tokenHash: tokenHash(token), expiresAt: { $gt: new Date() } });
     if (!session)
       return res.status(401).json({ error: 'Your session has expired. Sign in again.' });
-    const admin = await db
-      .collection('admins')
-      .findOne({ _id: session.adminId, role: 'super_admin' });
+    const admin = await db.collection('admins').findOne({ _id: session.adminId });
     if (!admin) return res.status(401).json({ error: 'Sign in to Tekkatha CMS.' });
     req.admin = admin;
     req.session = session;
@@ -60,6 +58,11 @@ export async function requireAdmin(req, res, next) {
   } catch (e) {
     next(e);
   }
+}
+export function requireSuperAdmin(req, res, next) {
+  if (req.admin?.role !== 'super_admin')
+    return res.status(403).json({ error: 'Only a super administrator can manage administrators.' });
+  next();
 }
 export function verifyOrigin(req, res, next) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();

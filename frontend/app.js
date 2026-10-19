@@ -1,6 +1,10 @@
 'use strict';
 import { createAdDisplay } from './ads.js';
 import { createFooterSeo } from './seo.js';
+import { renderProductText } from '../shared/product-content.js';
+import { formatNpr } from '../shared/currency.js';
+import { createAnalytics } from './analytics.js';
+import { createPopupNotice } from './popup.js';
 const $ = (selector, root = document) => root.querySelector(selector);
 const esc = (value) =>
   String(value).replace(
@@ -52,6 +56,7 @@ const photos = {
 };
 let articles = [];
 let products = [];
+const productDetails = new Map();
 let selected = [];
 let siteSettings = {
   siteName: 'Tekkatha',
@@ -84,7 +89,33 @@ const nav = [
   ['Buying Guides', '/guides'],
   ['Compare', '/compare'],
 ];
-const money = (n) => `Rs. ${n.toLocaleString('en-IN')}`;
+const sitemapSections = [
+  ['Explore', [
+    ['Home', '/'],
+    ['Technology News', '/news'],
+    ['Gadget Reviews', '/reviews'],
+    ['Buying Guides', '/guides'],
+    ['PC & Gaming', '/gaming'],
+  ]],
+  ['Find your next gadget', [
+    ['Smartphones', '/smartphones'],
+    ['Laptops', '/laptops'],
+    ['Products', '/products'],
+    ['Prices in Nepal', '/prices'],
+    ['Compare Products', '/compare'],
+  ]],
+  ['Tekkatha', [
+    ['Tekkatha AI', '/ai'],
+    ['About Us', '/about'],
+    ['Contact', '/contact'],
+    ['Advertise', '/contact?topic=advertise'],
+    ['Editorial Policy', '/editorial-policy'],
+    ['Privacy Policy', '/privacy'],
+    ['Terms & Conditions', '/terms'],
+    ['Sitemap', '/sitemap_index.xml'],
+  ]],
+];
+const money = (amount) => formatNpr(amount);
 function brand() {
   return `<a href="/" class="brand" aria-label="Tekkatha home"><img src="/assets/mark.svg" alt="" width="37" height="37"><span class="brand-text">${esc(siteSettings.siteName)}<b>.</b></span></a>`;
 }
@@ -94,16 +125,22 @@ function header() {
   return `<header><div class="topbar"><div class="container"><div class="top-meta"><span>${esc(siteSettings.tagline)}</span><span><span class="flag" aria-hidden="true">🇳🇵</span> Nepal & beyond</span></div><div class="top-links"><a href="/about">About Tekkatha</a><a href="/contact">Contact</a><a href="/contact?topic=advertise">Advertise</a></div></div></div><div class="container header-main"><div style="display:flex;align-items:center">${brand()}<span class="tagline">Know tech. Make better choices.</span></div><div class="header-actions"><button class="header-search" data-action="search" aria-label="Search Tekkatha">${icon('search')}<span>Search Tekkatha</span><kbd>/</kbd></button><button class="icon-btn" data-action="theme" aria-label="${dark ? 'Switch to light theme' : 'Switch to dark theme'}" title="${dark ? 'Light theme' : 'Dark theme'}">${icon(dark ? 'sun' : 'moon')}</button><a class="btn" href="/ai" aria-label="Ask Tekkatha AI">${icon('spark')}<span>Ask Tekkatha AI</span></a></div></div><div class="nav-wrap"><div class="container nav"><nav class="nav-links" aria-label="Main navigation">${nav.map(([name, url]) => `<a href="${url}" ${route === url ? 'class="active" aria-current="page"' : ''}>${name}</a>`).join('')}</nav><a href="/prices" class="nav-prices">${icon('tag')} Prices in Nepal</a></div></div></header>`;
 }
 function footer() {
-  return `<footer class="footer"><div class="container"><div class="footer-main"><div class="footer-brand">${brand()}<p>Making technology easier to understand, compare, and buy. From Nepal, for everyone.</p></div><div class="footer-links"><div><h4>Explore</h4><a href="/news">Technology News</a><a href="/reviews">Gadget Reviews</a><a href="/guides">Buying Guides</a><a href="/gaming">PC & Gaming</a></div><div><h4>Find your next gadget</h4><a href="/products">Product Database</a><a href="/prices">Prices in Nepal</a><a href="/compare">Compare Products</a><a href="/ai">Tekkatha AI</a></div><div><h4>Tekkatha</h4><a href="/about">About Us</a><a href="/contact">Contact</a><a href="/contact?topic=advertise">Advertise</a><a href="/editorial-policy">Editorial Policy</a></div></div></div><div class="footer-bottom"><span>© Tekkatha. All rights reserved.</span><span>${icon('globe')} Built around better tech decisions.</span></div></div></footer>`;
+  return `<footer class="footer"><div class="container"><div class="footer-main"><div class="footer-brand">${brand()}<p>Making technology easier to understand, compare, and buy. From Nepal, for everyone.</p></div><nav class="footer-links" aria-label="Footer navigation">${sitemapSections.map(([heading, links]) => `<div><h4>${esc(heading)}</h4>${links.map(([label, url]) => `<a href="${esc(url)}">${esc(label)}</a>`).join('')}</div>`).join('')}</nav></div><div class="footer-bottom"><span>© Tekkatha. All rights reserved.</span><span>${icon('globe')} Built around better tech decisions.</span></div></div></footer>`;
 }
 function meta(a, full = false) {
-  return `<div class="meta">${full ? '<span class="avatar" aria-hidden="true">TK</span>' : ''}<span>${esc(full ? a.author : a.isSample ? 'Editorial preview' : a.author)}</span><span class="dot">·</span><span>${a.read} min read</span></div>`;
+  const publishedAt = !a.isSample && (a.publishedAt || a.createdAt);
+  const publishedDate = publishedAt ? new Date(publishedAt) : null;
+  const published = full && publishedDate && !Number.isNaN(publishedDate.getTime())
+    ? `<span class="dot">·</span><time datetime="${esc(publishedDate.toISOString())}">${esc(publishedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))}</time>`
+    : '';
+  return `<div class="meta">${full ? '<span class="avatar" aria-hidden="true">TK</span>' : ''}<span>${esc(full ? a.author : a.isSample ? 'Editorial preview' : a.author)}</span><span class="dot">·</span><span>${a.read} min read</span>${published}</div>`;
 }
 function story(a) {
   return `<article class="story-card"><a href="/article/${a.id}"><div class="story-cover"><img src="${esc(a.image)}" alt="${esc(a.category)} editorial illustration" loading="lazy"></div><span class="eyebrow">${esc(a.category)}</span><h3>${esc(a.title)}</h3></a><p class="excerpt">${esc(a.excerpt)}</p>${meta(a)}</article>`;
 }
 function product(p) {
-  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${p.priceStatus === 'verified' ? 'Source recorded' : p.priceStatus === 'sample' ? 'Sample price' : 'Unverified price'}</span><img src="${esc(p.image)}" alt="Illustration of ${esc(p.brand)} ${esc(p.name)}" loading="lazy"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
+  const variantCount = 1 + (p.variants?.length || 0);
+  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${p.priceStatus === 'verified' ? 'Source recorded' : p.priceStatus === 'sample' ? 'Sample price' : 'Unverified price'}${variantCount > 1 ? ` · ${variantCount} variants` : ''}</span><img src="${esc(p.image)}" alt="Illustration of ${esc(p.brand)} ${esc(p.name)}" loading="lazy"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
 }
 function title(name, link, label = 'View all') {
   return `<div class="section-title"><h2>${name}</h2>${link ? `<a class="text-link" href="${link}">${label} ${icon('arrow')}</a>` : ''}</div>`;
@@ -111,6 +148,7 @@ function title(name, link, label = 'View all') {
 function homepage() {
   if (!articles.length)
     return `<div class="container page-content">${pageHead('Technology, Explained.', 'The latest stories will appear here as the editorial team publishes them.')}<div class="empty-state"><h3>The next story is on its way.</h3><a class="btn" href="/products">Explore products</a></div></div>`;
+  const recommendedArticles = articles.length > 6 ? articles.slice(6, 9) : articles.slice(1, 4);
   return `<div class="container"><div class="trending"><span class="trending-label">${icon('trend')} TRENDING</span><div class="trend-items">${articles
     .slice(0, 4)
     .map(
@@ -119,7 +157,7 @@ function homepage() {
     )
     .join(
       '',
-    )}<a href="/prices">Gadget prices in Nepal</a></div></div><div class="intro"><div><h1>Your daily dose of tech.</h1><p>The stories that matter. The details that help you decide.</p></div><span class="date-label">${icon('calendar')} Technology, Explained.</span></div><section class="hero-grid" aria-label="Featured stories"><a href="/article/${articles[0].id}" class="hero-main"><img src="${esc(articles[0].image)}" alt="Featured technology story" fetchpriority="high"><div class="hero-shade"></div><div class="hero-content"><span class="badge">THE BIG READ</span><h2>${esc(articles[0].title)}</h2><p>${esc(articles[0].excerpt)}</p>${meta(articles[0], true)}</div></a><div class="hero-side">${articles
+    )}<a href="/prices">Gadget prices in Nepal</a></div></div><div class="intro"><h1>Your daily dose of tech.</h1><p>The stories that matter. The details that help you decide.</p></div><section class="hero-grid" aria-label="Featured stories"><a href="/article/${articles[0].id}" class="hero-main"><img src="${esc(articles[0].image)}" alt="Featured technology story" fetchpriority="high"><div class="hero-shade"></div><div class="hero-content"><span class="badge">THE BIG READ</span><h2>${esc(articles[0].title)}</h2><p>${esc(articles[0].excerpt)}</p>${meta(articles[0], true)}</div></a><div class="hero-side">${articles
     .slice(1, 3)
     .map(
       (a) =>
@@ -128,7 +166,7 @@ function homepage() {
     .join(
       '',
     )}</div></section><section class="quick-links" aria-label="Find your next gadget"><a href="/prices" class="quick-link"><span class="quick-icon">${icon('tag')}</span><div><h3>Gadget prices in Nepal</h3><p>Your next upgrade starts here.</p></div>${icon('arrow')}</a><a href="/compare" class="quick-link"><span class="quick-icon">${icon('compare')}</span><div><h3>Compare side by side</h3><p>Small details. Better decisions.</p></div>${icon('arrow')}</a><a href="/guides" class="quick-link"><span class="quick-icon">${icon('book')}</span><div><h3>Find your perfect fit</h3><p>Practical guides for every budget.</p></div>${icon('arrow')}</a></section><section class="news-layout"><div>${title('On the radar', '/news', 'All stories')}<div class="news-filters" role="group" aria-label="Filter stories">${['All', 'Smartphones', 'Laptops', 'AI', 'Gaming'].map((x) => `<button class="filter ${newsFilter === x ? 'active' : ''}" data-news-filter="${esc(x)}">${x === 'All' ? 'All stories' : x}</button>`).join('')}</div><div class="story-grid" id="home-stories">${homeStories()}</div></div><aside class="news-sidebar"><div><h2 class="sidebar-title">Recommended reads</h2><div class="popular-list">${articles
-    .slice(1, 4)
+    .filter((article) => recommendedArticles.includes(article))
     .map(
       (a) =>
         `<a href="/article/${a.id}" class="popular-item"><div><span class="eyebrow">${esc(a.category)}</span><h3>${esc(a.title)}</h3></div></a>`,
@@ -155,8 +193,10 @@ function tray() {
     : '';
 }
 function shell(content) {
-  $('#app').innerHTML =
-    header() + `<main id="main" tabindex="-1">${content}</main>` + footer() + tray();
+  const html = (header() + `<main id="main" tabindex="-1">${content}</main>` + footer() + tray())
+    .replaceAll('Product Database', 'Products')
+    .replaceAll('product database', 'product catalog');
+  $('#app').innerHTML = html;
   mountFloatingChat();
   adDisplay.mount();
 }
@@ -165,6 +205,9 @@ function render() {
   let content;
   let pageTitle = '';
   let pageDescription = siteSettings.description;
+  let socialImage = '/assets/social-preview.png';
+  let socialImageAlt = `${siteSettings.siteName} technology coverage`;
+  let socialType = 'website';
   if (path === '/') content = homepage();
   else if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) {
     content = catalogPage(path);
@@ -175,7 +218,7 @@ function render() {
           ? 'Smartphones'
           : path === '/laptops'
             ? 'Laptops'
-            : 'Product Database';
+            : 'Products';
   } else if (['/news', '/reviews', '/guides', '/gaming'].includes(path)) {
     content = editorialPage(path);
     pageTitle =
@@ -187,37 +230,63 @@ function render() {
             ? 'Buying Guides'
             : 'PC & Gaming';
   } else if (path.startsWith('/product/')) {
-    const p = products.find((p) => p.id === path.split('/')[2]);
+    const id = path.split('/')[2];
+    const p = productDetails.get(id)?.product || products.find((p) => p.id === id);
+    if (p) loadProductDetails(id);
     content = p ? productPage(p) : notFound();
     pageTitle = p ? `${p.brand} ${p.name}` : 'Page not found';
     if (p)
       pageDescription =
         p.note ||
         `${p.brand} ${p.name}: specifications, price records in Nepal, and product comparisons on ${siteSettings.siteName}.`;
+    if (p) {
+      socialImage = p.image;
+      socialImageAlt = `${p.brand} ${p.name}`;
+    }
   } else if (path.startsWith('/article/')) {
     const a = articles.find((a) => a.id === path.split('/')[2]);
+    if (a) loadArticleProductDetails(a);
     content = a ? articlePage(a) : notFound();
     pageTitle = a?.title || 'Page not found';
     if (a?.excerpt) pageDescription = a.excerpt;
+    if (a) {
+      socialImage = a.image;
+      socialImageAlt = `${a.category} editorial illustration`;
+      socialType = 'article';
+    }
   } else if (path === '/compare') {
     content = comparePage();
     pageTitle = 'Compare Products';
   } else if (path === '/ai') {
     content = aiPage();
     pageTitle = 'Tekkatha AI';
+  } else if (path === '/sitemap') {
+    content = sitemapPage();
+    pageTitle = 'Sitemap';
+    pageDescription = 'Browse all Tekkatha sections, published articles, and products.';
   } else if (path === '/hello') {
     location.replace(
       import.meta.env.VITE_ADMIN_URL || 'http://' + location.hostname + ':5174/hello',
     );
     return;
-  } else if (['/about', '/contact', '/editorial-policy'].includes(path)) {
+  } else if (['/about', '/contact', '/editorial-policy', '/privacy', '/terms'].includes(path)) {
     content = infoPage(path);
     pageTitle =
       path === '/about'
         ? 'About Tekkatha'
         : path === '/contact'
           ? 'Contact Tekkatha'
-          : 'Editorial Policy';
+          : path === '/privacy'
+            ? 'Privacy Policy'
+            : path === '/terms'
+              ? 'Terms & Conditions'
+              : 'Editorial Policy';
+    pageDescription =
+      path === '/privacy'
+        ? `How ${siteSettings.siteName} handles analytics, browser storage, and visitor privacy.`
+        : path === '/terms'
+          ? `The terms that apply when using ${siteSettings.siteName}.`
+          : pageDescription;
   } else {
     content = notFound();
     pageTitle = 'Page not found';
@@ -226,20 +295,40 @@ function render() {
     ? `${pageTitle} — ${siteSettings.siteName}`
     : siteSettings.siteName + ' — Tech News, Reviews, Prices & Buying Guides';
   shell(content);
+  analytics.setPage(path);
   if (path === '/ai') bindAi();
   if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) bindCatalog(path);
   if (path === '/compare') bindCompare();
+  if (path.startsWith('/product/')) {
+    $('#retry-product-details')?.addEventListener('click', () => {
+      productDetails.delete(path.split('/')[2]);
+      render();
+    });
+  }
   footerSeo.update({
     settings: siteSettings,
     url: location.href,
     title: document.title,
     description: pageDescription,
+    image: socialImage,
+    imageAlt: socialImageAlt,
+    type: socialType,
+    article: path.startsWith('/article/') ? articles.find((article) => article.id === path.split('/')[2]) : null,
+    product: path.startsWith('/product/')
+      ? productDetails.get(path.split('/')[2])?.product || products.find((item) => item.id === path.split('/')[2])
+      : null,
   });
 }
 function navigate(path) {
   history.pushState({}, '', path);
   render();
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  if (!scrollToCurrentHash()) window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function scrollToCurrentHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return false;
+  requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
+  return true;
 }
 function toast(message) {
   const t = $('#toast');
@@ -350,7 +439,7 @@ function openSearch() {
 function searchResults(query) {
   const q = query.trim().toLowerCase();
   const ps = products.filter((p) =>
-    `${esc(p.brand)} ${esc(p.name)} ${esc(p.type)}`.toLowerCase().includes(q),
+    `${esc(p.brand)} ${esc(p.name)} ${esc(p.type)} ${esc(p.variant)} ${(p.variants || []).map((variant) => esc(variant.label)).join(' ')}`.toLowerCase().includes(q),
   );
   const as = articles.filter((a) =>
     `${esc(a.title)} ${esc(a.category)} ${esc(a.excerpt)}`.toLowerCase().includes(q),
@@ -402,12 +491,26 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('popstate', () => {
   closeSearch();
   render();
+  scrollToCurrentHash();
 });
 function pageHead(name, description, crumb = '') {
   name = esc(name);
   description = esc(description);
   crumb = esc(crumb);
   return `<div class="page-head"><div class="breadcrumb"><a href="/">Home</a><span>/</span><span>${crumb || name}</span></div><h1>${name}</h1><p>${description}</p></div>`;
+}
+function sitemapPage() {
+  const articleLinks = articles
+    .map((article) => [article.title, `/article/${encodeURIComponent(article.id)}`])
+    .sort(([a], [b]) => a.localeCompare(b));
+  const productLinks = products
+    .map((product) => [
+      `${product.brand} ${product.name}${product.variant ? ` — ${product.variant}` : ''}`,
+      `/product/${encodeURIComponent(product.id)}`,
+    ])
+    .sort(([a], [b]) => a.localeCompare(b));
+  const sections = [...sitemapSections, ['Articles', articleLinks], ['Products', productLinks]];
+  return `<div class="container sitemap-page">${pageHead('Sitemap', 'Browse every section, published article, and product on Tekkatha.')}<p class="sitemap-xml-link">Looking for the search engine version? <a href="/sitemap_index.xml">View the XML sitemap index</a>.</p><nav class="sitemap-grid" aria-label="All site pages">${sections.filter(([, links]) => links.length).map(([heading, links]) => `<section class="sitemap-group"><h2>${esc(heading)}</h2><ul>${links.map(([label, url]) => `<li><a href="${esc(url)}">${esc(label)}</a></li>`).join('')}</ul></section>`).join('')}</nav></div>`;
 }
 function catalogType(path) {
   return path === '/smartphones'
@@ -440,7 +543,7 @@ function catalogPage(path) {
         ? 'Smartphones'
         : path === '/laptops'
           ? 'Laptops'
-          : 'The product database';
+        : 'The product catalog';
   const type = catalogType(path);
   const results = filteredProducts(path);
   return `<div class="container">${pageHead(name, 'Less searching. More understanding. Explore specifications and find the right fit for your budget.')}<div class="catalog-banner">${icon('shield')}<p><strong>Know the price context.</strong> Every record has a price label. Confirm current retailer pricing, availability and warranty before buying.</p></div><div class="catalog-toolbar"><label class="catalog-search">${icon('search')}<input type="search" id="catalog-query" placeholder="Search a product or specification" aria-label="Search products" value="${esc(catalogState.query)}"></label>${!['/smartphones', '/laptops'].includes(path) ? `<label class="select-label"><span>Category</span><select id="catalog-type"><option value="All">All categories</option>${[...new Set(products.map((p) => p.type))].map((x) => `<option ${type === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}<label class="select-label"><span>Brand</span><select id="catalog-brand"><option value="All">All brands</option>${[...new Set(products.map((p) => p.brand))].map((x) => `<option ${catalogState.brand === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><label class="select-label"><span>Budget</span><select id="catalog-budget">${[
@@ -527,6 +630,73 @@ function priceLabel(p) {
       ? 'Retailer source recorded'
       : 'Unverified Nepal price';
 }
+async function loadProductDetails(id) {
+  if (productDetails.has(id)) return;
+  productDetails.set(id, { status: 'loading' });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const product = await api('/products/' + encodeURIComponent(id), { signal: controller.signal });
+    productDetails.set(id, { status: 'ready', product });
+  } catch {
+    productDetails.set(id, { status: 'error' });
+  } finally {
+    clearTimeout(timeout);
+  }
+  // A response for another device must not replace the page the reader opened.
+  if (location.pathname.replace(/\/$/, '') === '/product/' + id) {
+    render();
+    scrollToCurrentHash();
+  }
+}
+
+function guideProductEntries(article) {
+  if (Array.isArray(article.guideProducts) && article.guideProducts.length)
+    return article.guideProducts;
+  return (article.productIds || []).map((productId) => ({ productId, description: '' }));
+}
+
+async function loadArticleProductDetails(article) {
+  const ids = guideProductEntries(article)
+    .map((entry) => entry.productId)
+    .filter((id) => !productDetails.has(id));
+  if (!ids.length) return;
+  await Promise.all(ids.map((id) => loadProductDetails(id)));
+  if (location.pathname.replace(/\/$/, '') !== '/article/' + article.id) return;
+  const y = window.scrollY;
+  render();
+  if (!scrollToCurrentHash()) window.scrollTo(0, y);
+}
+
+function hasProductReview(product) {
+  return !!((product.reviewBlocks || []).length || product.review?.trim());
+}
+
+function detailedReviewMarkup(product) {
+  if (!(product.reviewBlocks || []).length) return renderProductText(product.review || '');
+  return `<div class="product-review-blocks">${product.reviewBlocks
+    .map((block) => {
+      if (block.type === 'image')
+        return `<figure class="product-review-image"><img src="${esc(block.image)}" alt="${esc(block.alt)}" loading="lazy">${block.caption ? `<figcaption>${esc(block.caption)}</figcaption>` : ''}</figure>`;
+      const copy = renderProductText(block.text || '');
+      if (!copy) return '';
+      return `<div class="product-review-text">${block.heading ? `<h3>${esc(block.heading)}</h3>` : ''}${copy}</div>`;
+    })
+    .join('')}</div>`;
+}
+
+function productLongContent(p) {
+  const state = productDetails.get(p.id)?.status;
+  if (state === 'loading')
+    return '<div class="product-reading-status" role="status">Loading the full description and review…</div>';
+  if (state === 'error')
+    return '<div class="product-reading-status" role="status"><p>The full device details could not be loaded.</p><button id="retry-product-details" class="btn btn-outline" type="button">Try again</button></div>';
+  const description = renderProductText(p.description || '');
+  const review = detailedReviewMarkup(p);
+  if (!description && !review) return '';
+  return `<div class="product-reading"><nav class="product-reading-nav" aria-label="Device reading sections">${description ? '<a href="#product-description">Full description ' + icon('arrow') + '</a>' : ''}${review ? '<a href="#product-review">Read the detailed review ' + icon('arrow') + '</a>' : ''}</nav>${description ? '<section id="product-description" class="product-long-content"><span class="eyebrow">A closer look</span><h2>Full description</h2>' + description + '</section>' : ''}${review ? '<section id="product-review" class="product-long-content product-review-section"><span class="eyebrow">Beyond the specifications</span><h2>Detailed review</h2>' + review + '</section>' : ''}</div>`;
+}
+
 function productPage(p) {
   const same = products.filter((x) => x.type === p.type && x.id !== p.id);
   const available = {
@@ -534,7 +704,7 @@ function productPage(p) {
     'in-stock': 'Listed as in stock',
     'out-of-stock': 'Listed as out of stock',
   };
-  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Product illustration</span><img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p>${p.priceSource ? '<a class="manufacturer-link" href="' + esc(p.priceSource) + '" target="_blank" rel="noopener noreferrer">Retailer price source ' + icon('arrow') + '</a>' : ''}<div class="detail-actions"><button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${[
+  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Product illustration</span><img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p><div class="detail-actions">${p.priceSource ? '<a class="btn buy-now-btn" href="' + esc(p.priceSource) + '" target="_blank" rel="sponsored noopener noreferrer">Buy now ' + icon('arrow') + '</a>' : ''}<button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${[
     ['Display', p.display, 'phone'],
     ['Processor', p.processor, 'cpu'],
     ['Memory', p.memory, 'cpu'],
@@ -554,8 +724,60 @@ function productPage(p) {
     )
     .join(
       '',
-    )}</div></section><section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
+    )}</div></section>${productLongContent(p)}<section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
 }
+function productVariantMarkup(product) {
+  const normalize = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const variants = products.filter(
+    (item) =>
+      item.id !== product.id &&
+      item.type === product.type &&
+      normalize(item.brand) === normalize(product.brand) &&
+      normalize(item.name) === normalize(product.name),
+  );
+  if (!variants.length) return '';
+  const options = [product, ...variants];
+  return `<section class="product-variants"><div class="section-title"><h2>Available configurations</h2><span class="muted">${options.length} variants</span></div><p class="section-subtitle">Choose the exact memory, storage, or configuration before checking the price.</p><div class="variant-list">${options.map((item) => `<a class="variant-option ${item.id === product.id ? 'active' : ''}" href="/product/${encodeURIComponent(item.id)}" ${item.id === product.id ? 'aria-current="page"' : ''}><span><strong>${esc(item.variant || 'Base configuration')}</strong><small>${esc(item.brand)} ${esc(item.name)}</small></span><span class="variant-option-price">${money(item.price)}<small>${priceLabel(item)}</small></span></a>`).join('')}</div></section>`;
+}
+const productPageWithVariants = productPage;
+function embeddedVariantOptions(product) {
+  const options = [
+    {
+      key: 'base',
+      label: product.variant || 'Base configuration',
+      price: product.price,
+      priceStatus: product.priceStatus,
+      availability: product.availability,
+      priceSource: product.priceSource,
+      priceCheckedAt: product.priceCheckedAt,
+    },
+    ...(product.variants || []).map((variant, index) => ({ ...variant, key: String(index + 1) })),
+  ];
+  if (options.length < 2) return '';
+  const selected = new URLSearchParams(location.search).get('variant') || 'base';
+  return `<section class="embedded-variants"><div class="section-title"><h2>Choose a variant</h2><span class="muted">${options.length} options</span></div><div class="variant-list">${options.map((option) => `<a class="variant-option ${option.key === selected ? 'active' : ''}" href="/product/${encodeURIComponent(product.id)}?variant=${encodeURIComponent(option.key)}" ${option.key === selected ? 'aria-current="page"' : ''}><span><strong>${esc(option.label)}</strong><small>${option.key === 'base' ? 'Default configuration' : 'Additional configuration'}</small></span><span class="variant-option-price">${money(option.price)}<small>${priceLabel(option)}</small></span></a>`).join('')}</div></section>`;
+}
+productPage = (product) => {
+  const options = [
+    {
+      key: 'base',
+      variant: product.variant,
+      price: product.price,
+      priceStatus: product.priceStatus,
+      availability: product.availability,
+      priceSource: product.priceSource,
+      priceCheckedAt: product.priceCheckedAt,
+    },
+    ...(product.variants || []).map((variant, index) => ({ ...variant, variant: variant.label, key: String(index + 1) })),
+  ];
+  const selected = new URLSearchParams(location.search).get('variant') || 'base';
+  const chosen = options.find((option) => option.key === selected) || options[0];
+  const display = { ...product, ...chosen };
+  return productPageWithVariants(display).replace(
+    '<section class="spec-section">',
+    productVariantMarkup(product) + embeddedVariantOptions(product) + '<section class="spec-section">',
+  );
+};
 function compareProducts() {
   return (
     selected.length
@@ -619,13 +841,89 @@ function bindCompare() {
 }
 let articleBody = {};
 function articlePage(a) {
+  const words = (value) => new Set(
+    String(value || '').toLowerCase().match(/[a-z0-9]{4,}/g)?.filter((word) => ![
+      'about', 'after', 'before', 'from', 'have', 'into', 'more', 'their', 'there', 'these', 'this', 'those', 'what', 'when', 'which', 'with', 'your',
+    ].includes(word)) || [],
+  );
+  const currentTerms = words(`${a.title} ${a.excerpt} ${a.category}`);
+  const categoryPath = {
+    'Buying Guides': '/guides',
+    Reviews: '/reviews',
+    Smartphones: '/smartphones',
+    Laptops: '/laptops',
+    Gaming: '/gaming',
+    'PC Components': '/gaming',
+    'PC Builds': '/gaming',
+  }[a.category] || '/news';
   const related = articles
-    .filter((x) => x.id !== a.id && (x.category === a.category || x.kind === a.kind))
-    .slice(0, 3);
-  return `<div class="container article-container"><div class="breadcrumb article-crumb"><a href="/">Home</a><span>/</span><a href="${a.kind === 'Guide' ? '/guides' : '/news'}">${esc(a.category)}</a></div><header class="article-head"><span class="eyebrow">${esc(a.category)} ${a.isSample ? '<span class="pill">Editorial preview</span>' : ''}</span><h1>${esc(a.title)}</h1><p>${esc(a.excerpt)}</p>${meta(a, true)}</header><img class="article-hero" src="${esc(a.image)}" alt="${esc(a.category)} editorial illustration"><div class="article-layout"><aside class="article-toc"><h2>In this article</h2>${articleBody[a.id].map(([h], i) => `<a href="#section-${i}">${esc(h)}</a>`).join('')}<a class="text-link" href="/ai">Ask Tekkatha AI ${icon('spark')}</a></aside><div class="article-body">${articleBody[a.id].map(([h, p], i) => `<section id="section-${i}"><h2>${esc(h)}</h2><p>${esc(p)}</p></section>`).join('')}${a.id === 'macbook-air-overview' ? `<div class="article-source">Specifications: <a href="https://support.apple.com/en-ie/122209" target="_blank" rel="noopener noreferrer">Apple’s official MacBook Air M4 technical specifications</a>.</div>` : ''}${a.isSample ? '<div class="article-note">Sample editorial article. Product prices and availability require verification before publication.</div>' : ''}</div></div><section class="guide-section">${title('Keep exploring', '/news', 'More stories')}<div class="story-grid full-grid">${(related.length ? related : articles.slice(0, 3)).map(story).join('')}</div></section></div>`;
+    .filter((candidate) => candidate.id !== a.id && !candidate.isSample)
+    .map((candidate) => {
+      const candidateTerms = words(`${candidate.title} ${candidate.excerpt} ${candidate.category}`);
+      const overlap = [...currentTerms].filter((term) => candidateTerms.has(term)).length;
+      return {
+        article: candidate,
+        score: overlap * 3 + (candidate.category === a.category ? 4 : 0) + (candidate.kind === a.kind ? 1 : 0),
+      };
+    })
+    .filter(({ score }) => score > 1)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map(({ article }) => article);
+  const relatedArticles = related.length
+    ? related
+    : articles.filter((candidate) => candidate.id !== a.id && !candidate.isSample).slice(0, 3);
+  return `<div class="container article-container"><div class="breadcrumb article-crumb"><a href="/">Home</a><span>/</span><a href="${categoryPath}">${esc(a.category)}</a></div><header class="article-head"><span class="eyebrow">${esc(a.category)} ${a.isSample ? '<span class="pill">Editorial preview</span>' : ''}</span><h1>${esc(a.title)}</h1><p>${esc(a.excerpt)}</p>${meta(a, true)}</header><img class="article-hero" src="${esc(a.image)}" alt="${esc(a.category)} editorial illustration"><div class="article-layout"><aside class="article-toc"><h2>In this article</h2>${articleBody[a.id].map(([h], i) => `<a href="#section-${i}">${esc(h)}</a>`).join('')}<a class="text-link" href="/ai">Ask Tekkatha AI ${icon('spark')}</a></aside><div class="article-body">${articleBody[a.id].map(([h, p], i) => `<section id="section-${i}"><h2>${esc(h)}</h2><p>${esc(p)}</p></section>`).join('')}${a.id === 'macbook-air-overview' ? `<div class="article-source">Specifications: <a href="https://support.apple.com/en-ie/122209" target="_blank" rel="noopener noreferrer">Apple’s official MacBook Air M4 technical specifications</a>.</div>` : ''}${a.isSample ? '<div class="article-note">Sample editorial article. Product prices and availability require verification before publication.</div>' : ''}</div></div><section class="guide-section">${title('Keep exploring', categoryPath, 'More stories')}<div class="story-grid full-grid">${relatedArticles.map(story).join('')}</div></section></div>`;
 }
+function articleProductsMarkup(article) {
+  const selectedProducts = guideProductEntries(article)
+    .map((entry, index) => {
+      const summary = products.find((product) => product.id === entry.productId);
+      const product = productDetails.get(entry.productId)?.product || summary;
+      return product ? { entry, product, index } : null;
+    })
+    .filter(Boolean);
+  if (!selectedProducts.length) return '';
+  const specs = (product) => [
+    ['Display', product.display],
+    ['Processor', product.processor],
+    ['Memory', product.memory],
+    ['Storage', product.storage],
+    ['Battery', product.battery],
+    ['Camera', product.camera],
+  ];
+  const reviewHref = (product) =>
+    `/product/${encodeURIComponent(product.id)}${hasProductReview(product) ? '#product-review' : ''}`;
+  const reviewLabel = (product) =>
+    hasProductReview(product) ? 'Read our review' : 'View product details';
+  const buyLink = (product, small = false) =>
+    product.priceSource
+      ? `<a class="guide-buy-link ${small ? 'small' : ''}" href="${esc(product.priceSource)}" target="_blank" rel="sponsored noopener noreferrer">Buy now ${icon('arrow')}</a>`
+      : `<span class="guide-buy-unavailable ${small ? 'small' : ''}">Buy link not added</span>`;
+  const deviceSections = selectedProducts
+    .map(({ entry, product, index }) => {
+      const description = renderProductText(entry.description || product.note || product.description || '');
+      return `<article class="buying-guide-device" id="guide-device-${esc(product.id)}"><header class="guide-device-head"><span class="guide-pick-number">${String(index + 1).padStart(2, '0')}</span><div><span class="eyebrow">${esc(product.type)}</span><h2><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a></h2><p>${esc(product.variant || 'Base configuration')}</p></div></header><div class="guide-device-layout"><a class="guide-device-image" href="${reviewHref(product)}"><img src="${esc(product.image)}" alt="${esc(product.brand + ' ' + product.name)}" loading="lazy"></a><div class="guide-device-content"><div class="guide-device-description">${description || '<p>See the product page for complete device details.</p>'}</div><dl class="guide-device-specs">${specs(product).map(([label, value]) => `<div><dt>${label}</dt><dd>${esc(value || 'Not listed')}</dd></div>`).join('')}</dl><div class="guide-device-footer"><div class="guide-device-price"><span>Price in Nepal</span><strong>${money(product.price)}</strong><small>${priceLabel(product)}</small></div><div class="guide-device-actions"><a class="guide-review-link" href="${reviewHref(product)}">${reviewLabel(product)} ${icon('arrow')}</a>${buyLink(product)}</div></div></div></div></article>`;
+    })
+    .join('');
+  const tableRows = [
+    ['Price in Nepal', (product) => `<strong class="guide-table-price">${money(product.price)}</strong><small>${priceLabel(product)}</small>`],
+    ...['Display', 'Processor', 'Memory', 'Storage', 'Battery', 'Camera'].map((label, index) => [
+      label,
+      (product) => esc(specs(product)[index][1] || 'Not listed'),
+    ]),
+  ];
+  const comparison = `<section class="guide-device-comparison" id="guide-device-comparison"><div class="guide-comparison-head"><span class="eyebrow">Quick comparison</span><h2>Every device at a glance</h2><p>Open a device name for our full details and review, or use Buy now to continue to the retailer.</p></div><div class="guide-table-scroll"><table class="guide-comparison-table"><caption class="sr-only">Specifications and Nepal prices for every device in this buying guide</caption><thead><tr><th scope="col">Specification</th>${selectedProducts.map(({ product }) => `<th scope="col"><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a><small>${esc(product.variant || 'Base configuration')}</small></th>`).join('')}</tr></thead><tbody>${tableRows.map(([label, output]) => `<tr><th scope="row">${label}</th>${selectedProducts.map(({ product }) => `<td>${output(product)}</td>`).join('')}</tr>`).join('')}<tr class="guide-action-row"><th scope="row">Links</th>${selectedProducts.map(({ product }) => `<td><div class="guide-table-actions"><a href="${reviewHref(product)}">${reviewLabel(product)}</a>${buyLink(product, true)}</div></td>`).join('')}</tr></tbody></table></div></section>`;
+  return `<section class="article-products"><div class="section-title"><div><span class="eyebrow">The shortlist</span><h2>Devices in this buying guide</h2></div><span class="muted">${selectedProducts.length} included</span></div><div class="article-product-list">${deviceSections}</div>${comparison}</section>`;
+}
+const articlePageWithProducts = articlePage;
+articlePage = (article) =>
+  articlePageWithProducts(article).replace(
+    '</div></div><section class="guide-section">',
+    articleProductsMarkup(article) + '</div></div><section class="guide-section">',
+  );
 function aiPage() {
-  return `<div class="container ai-container">${pageHead('Your next tech decision starts here.', 'Ask Tekkatha AI about products, specifications, prices, comparisons, reviews, and buying recommendations.', 'Tekkatha AI')}<section class="ai-workspace"><div class="ai-workspace-head"><span class="ai-name">${icon('spark')} ${esc(siteSettings.aiName)}</span><span class="pill">Catalog mode</span><button class="text-link" data-action="new-chat">New conversation ${icon('plus')}</button></div><div class="ai-chat" id="ai-chat" aria-live="polite">${aiMessages.length ? renderMessages() : `<div class="ai-welcome"><div class="ai-welcome-icon">${icon('spark')}</div><h2>A little clarity goes a long way.</h2><p>Compare the details. Understand the specs.<br>Find a better starting point.</p><div class="ai-suggestions">${['Best phones under Rs. 50,000?', 'Compare Galaxy A56 and Nothing Phone (3a)', 'Show me phones with 120Hz AMOLED displays', 'What is the latest price of this product?'].map((q) => `<button data-question="${esc(q)}">${esc(q)} ${icon('arrow')}</button>`).join('')}</div></div>`}</div><form id="ai-form" class="ai-input-form"><label class="sr-only" for="ai-input">Ask Tekkatha AI</label><input id="ai-input" placeholder="Ask anything about gadgets..." autocomplete="off" maxlength="1000" required><button class="btn" aria-label="Send question">${icon('send')}</button></form><p class="ai-disclaimer">Catalog mode uses Tekkatha’s MongoDB records. Live AI and retailer lookup are not connected.</p></section><div class="ai-bottom"><span>${icon('shield')} Specifications linked to manufacturer sources</span><span>${icon('tag')} Sample Nepal prices are clearly marked</span></div></div>`;
+  return `<div class="container ai-container">${pageHead('Your next tech decision starts here.', 'Ask Tekkatha AI about products, specifications, prices, comparisons, reviews, and buying recommendations.', 'Tekkatha AI')}<section class="ai-workspace"><div class="ai-workspace-head"><span class="ai-name">${icon('spark')} ${esc(siteSettings.aiName)}</span><span class="pill">Secure AI</span><button class="text-link" data-action="new-chat">New conversation ${icon('plus')}</button></div><div class="ai-chat" id="ai-chat" aria-live="polite">${aiMessages.length ? renderMessages() : `<div class="ai-welcome"><div class="ai-welcome-icon">${icon('spark')}</div><h2>A little clarity goes a long way.</h2><p>Compare the details. Understand the specs.<br>Find a better starting point.</p><div class="ai-suggestions">${['Best phones under Rs. 50,000?', 'Compare Galaxy A56 and Nothing Phone (3a)', 'Show me phones with 120Hz AMOLED displays', 'What is the latest price of this product?'].map((q) => `<button data-question="${esc(q)}">${esc(q)} ${icon('arrow')}</button>`).join('')}</div></div>`}</div><form id="ai-form" class="ai-input-form"><label class="sr-only" for="ai-input">Ask Tekkatha AI</label><input id="ai-input" placeholder="Ask anything about gadgets..." autocomplete="off" maxlength="1000" required><button class="btn" aria-label="Send question">${icon('send')}</button></form></section><div class="ai-bottom"><span>${icon('shield')} Limited, protected product context</span><span>${icon('tag')} Nepal prices keep their verification labels</span></div></div>`;
 }
 function chatWelcome(compact = false) {
   const questions = compact
@@ -644,8 +942,11 @@ function chatWelcome(compact = false) {
 }
 function mountFloatingChat() {
   const root = $('#floating-chat-root');
+  const isFullChatPage = (location.pathname.replace(/\/$/, '') || '/') === '/ai';
+  root.classList.toggle('is-disabled', isFullChatPage);
+  if (isFullChatPage && floatingChatOpen) setFloatingChat(false, false);
   if (!root.firstElementChild) {
-    root.innerHTML = `<section id="floating-chat-panel" class="floating-chat-panel" role="dialog" aria-modal="false" aria-labelledby="floating-chat-title" hidden><div class="floating-chat-head"><span class="floating-chat-symbol">${icon('spark')}</span><div><h2 id="floating-chat-title">${esc(siteSettings.aiName)}</h2><span>Catalog assistant</span></div><button type="button" class="icon-btn" data-action="close-floating-chat" aria-label="Close chat">${icon('close')}</button></div><div class="floating-chat-tools"><a href="/ai" data-action="full-chat">Open full chat ${icon('arrow')}</a><button type="button" data-action="new-chat">New chat ${icon('plus')}</button></div><div id="floating-ai-chat" class="ai-chat" role="log" aria-live="polite" aria-label="Chat conversation"></div><form id="floating-ai-form" class="ai-input-form"><label class="sr-only" for="floating-ai-input">Ask Tekkatha AI</label><input id="floating-ai-input" placeholder="Ask anything about gadgets..." autocomplete="off" maxlength="1000" required><button class="btn" type="submit" aria-label="Send question">${icon('send')}</button></form><p class="ai-disclaimer">Uses our catalog. Live AI and retailer lookup are not connected.</p></section><button id="floating-chat-launcher" class="floating-chat-launcher" type="button" data-action="toggle-floating-chat" aria-expanded="false" aria-controls="floating-chat-panel">${icon('spark')}<span>${esc(siteSettings.aiName)}</span></button>`;
+    root.innerHTML = `<section id="floating-chat-panel" class="floating-chat-panel" role="dialog" aria-modal="false" aria-labelledby="floating-chat-title" hidden><div class="floating-chat-head"><span class="floating-chat-symbol">${icon('spark')}</span><div><h2 id="floating-chat-title">${esc(siteSettings.aiName)}</h2><span>Product assistant</span></div><button type="button" class="icon-btn" data-action="close-floating-chat" aria-label="Close chat">${icon('close')}</button></div><div class="floating-chat-tools"><a href="/ai" data-action="full-chat">Open full chat ${icon('arrow')}</a><button type="button" data-action="new-chat">New chat ${icon('plus')}</button></div><div id="floating-ai-chat" class="ai-chat" role="log" aria-live="polite" aria-label="Chat conversation"></div><form id="floating-ai-form" class="ai-input-form"><label class="sr-only" for="floating-ai-input">Ask Tekkatha AI</label><input id="floating-ai-input" placeholder="Ask about a product..." autocomplete="off" maxlength="1000" required><button class="btn" type="submit" aria-label="Send question">${icon('send')}</button></form></section><button id="floating-chat-launcher" class="floating-chat-launcher" type="button" data-action="toggle-floating-chat" aria-expanded="false" aria-controls="floating-chat-panel" aria-label="${esc(siteSettings.aiName)}" title="${esc(siteSettings.aiName)}">${icon('spark')}<span>${esc(siteSettings.aiName)}</span></button>`;
     $('#floating-ai-form').addEventListener('submit', (e) => {
       e.preventDefault();
       askAi($('#floating-ai-input').value, 'floating-ai-input');
@@ -654,6 +955,8 @@ function mountFloatingChat() {
   }
   $('#floating-chat-title').textContent = siteSettings.aiName;
   $('#floating-chat-launcher span').textContent = siteSettings.aiName;
+  $('#floating-chat-launcher').setAttribute('aria-label', siteSettings.aiName);
+  $('#floating-chat-launcher').setAttribute('title', siteSettings.aiName);
   root.classList.toggle('has-comparison', !!$('.compare-tray'));
 }
 function setFloatingChat(open, returnFocus = true) {
@@ -674,9 +977,10 @@ function updateAiChats(forceScroll = false) {
     chat.innerHTML =
       (aiMessages.length ? renderMessages() : chatWelcome(id === 'floating-ai-chat')) +
       (aiBusy
-        ? `<div class="chat-pending" role="status">${icon('spark')} Checking the catalog…</div>`
+        ? `<div class="chat-pending" role="status">${icon('spark')} Thinking with the catalog…</div>`
         : '');
-    if (forceScroll || atBottom) chat.scrollTop = chat.scrollHeight;
+    if (!aiMessages.length) chat.scrollTop = 0;
+    else if (forceScroll || atBottom) chat.scrollTop = chat.scrollHeight;
   }
   document
     .querySelectorAll(
@@ -708,20 +1012,29 @@ function renderMessages() {
 async function askAi(q, inputId = 'ai-input') {
   const question = q.trim().slice(0, 1000);
   if (!question || aiBusy) return;
+  const history = aiMessages
+    .filter((message) => message.text)
+    .slice(-8)
+    .map((message) => ({ role: message.role, content: message.text.slice(0, 2000) }));
+  const contextProductIds = [...new Set(
+    aiMessages.slice(-6).flatMap((message) => message.productIds || []),
+  )].slice(-8);
   aiMessages.push({ role: 'user', text: question });
   aiBusy = true;
   aiDraft = '';
   updateAiChats(true);
   $('#' + inputId)?.focus({ preventScroll: true });
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 40000);
   try {
     const result = await api('/assistant', {
       method: 'POST',
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, history, contextProductIds }),
       signal: controller.signal,
     });
     let html = '<p>' + esc(result.message) + '</p>';
+    if (result.keywords?.length)
+      html += '<p class="ai-keywords">Matched: ' + result.keywords.map((keyword) => esc(keyword)).join(' · ') + '</p>';
     if (result.comparison) {
       html +=
         '<div class="table-scroll"><table class="ai-mini-table"><thead><tr><th>Specification</th>' +
@@ -756,12 +1069,14 @@ async function askAi(q, inputId = 'ai-input') {
               encodeURIComponent(p.id) +
               '"><img src="' +
               esc(p.image) +
-              '" alt=""><div><strong>' +
+              '" alt="' +
+              esc(p.brand + ' ' + p.name) +
+              '"><div><strong>' +
               esc(p.brand) +
               ' ' +
               esc(p.name) +
               '</strong><span>' +
-              esc(p.display) +
+              esc(p.variant || p.display) +
               '</span><span>' +
               money(p.price) +
               ' · ' +
@@ -787,7 +1102,11 @@ async function askAi(q, inputId = 'ai-input') {
           )
           .join('') +
         '</div>';
-    aiMessages.push({ role: 'assistant', html });
+    const productIds = [...new Set([
+      ...(result.products || []).map((product) => product.id),
+      ...(result.comparison || []).map((product) => product.id),
+    ])].slice(0, 8);
+    aiMessages.push({ role: 'assistant', text: result.message, html, productIds });
   } catch (error) {
     const message =
       error.name === 'AbortError'
@@ -795,6 +1114,7 @@ async function askAi(q, inputId = 'ai-input') {
         : error.message;
     aiMessages.push({
       role: 'assistant',
+      text: message,
       html:
         '<p>' +
         esc(message) +
@@ -836,14 +1156,18 @@ function infoPage(path) {
         'Story ideas, corrections and editorial questions.',
       ],
       ['Advertising', siteSettings.advertiseEmail, 'Advertising and potential brand partnerships.'],
-      ['Support', siteSettings.supportEmail, 'Website, product database and assistant support.'],
+      ['Support', siteSettings.supportEmail, 'Website, product catalog and assistant support.'],
     ]
       .map(
         ([h, email, p]) =>
           `<div class="contact-card">${icon('mail')}<h2>${esc(h)}</h2><p>${esc(p)}</p><strong>${esc(email)}</strong><span class="pill">Mailbox not configured</span></div>`,
       )
       .join('')}</div></div>`;
-  return `<div class="container narrow-page">${pageHead('Clear information. Transparent decisions.', 'The editorial principles behind Tekkatha.', 'Editorial Policy')}<div class="prose page-content"><h2>Accuracy and sourcing</h2><p>Technical specifications should link to manufacturer documentation. News should identify its source and publication date. Corrections should explain what changed and why.</p><h2>Reviews and product overviews</h2><p>A hands-on review should state how the device was obtained and tested. Product overviews should be labeled clearly and should not imply testing that did not take place. The current preview contains sample editorial articles.</p><h2>Nepal prices and availability</h2><p>Published prices should identify the configuration, source, warranty terms and date checked. The prices in this preview are illustrative. They are not verified quotes or statements of local availability.</p><h2>Commercial relationships</h2><p>Advertising, sponsorships and affiliate links should be identified clearly. A commercial relationship should never be presented as an independent editorial judgment.</p><h2>AI assistance</h2><p>AI answers should identify their sources and limitations. The preview assistant currently searches the included catalog and does not verify live retailer information or make claims about unlisted devices.</p></div></div>`;
+  if (path === '/privacy')
+    return `<div class="container narrow-page">${pageHead('Privacy, in plain language.', 'How Tekkatha handles visitor information and browser storage.', 'Privacy Policy')}<div class="prose page-content legal-page"><p class="legal-updated">Last updated: 9 October 2026</p><h2>Information we collect</h2><p>You can read Tekkatha without creating a public account. If you allow anonymous analytics, we record a random browser identifier, a random session identifier, the page visited, time spent, device category, browser, operating system, language and time zone. Our analytics records do not include your name or IP address.</p><h2>AI chat</h2><p>When you use Tekkatha AI, your question, up to eight recent chat messages, and no more than eight relevant product records are sent securely to our configured AI service at ai.shahnishant.com.np. Product records are limited to names, categories, variants, specifications, Nepal prices, price verification dates and availability labels. We do not send administrator data, analytics identifiers, session tokens, email addresses, product reviews, retailer links or raw database records. Do not include passwords, payment details or other sensitive personal information in a chat question.</p><h2>Your analytics choice</h2><p>Analytics starts only after you select “Allow anonymous analytics.” If you decline, no analytics events are sent. You can reset this choice by clearing Tekkatha’s site data in your browser.</p><h2>Browser storage and cookies</h2><p>The public website uses browser storage for your theme, comparison list, analytics choice and identifiers, and popup display frequency. The separate administrator area uses a secure, HTTP-only session cookie after an administrator signs in.</p><h2>External services and links</h2><p>Some pages load fonts or editorial images from third-party providers. Product sources, advertisements, popup banners and “Buy now” links can take you to other websites. Those services apply their own privacy practices when your browser connects to them.</p><h2>Data security and retention</h2><p>Administrative access is restricted, passwords are stored as one-way hashes, and session tokens are hashed in the database. Operational and analytics records are kept only while they remain useful for running and improving the publication.</p><h2>Your choices and questions</h2><p>You can decline analytics, clear browser storage, block third-party resources through your browser, and avoid following external links. Privacy questions can be directed to <strong>${esc(siteSettings.contactEmail)}</strong>.</p></div></div>`;
+  if (path === '/terms')
+    return `<div class="container narrow-page">${pageHead('Terms for using Tekkatha.', 'The conditions that apply when you browse and use this website.', 'Terms & Conditions')}<div class="prose page-content legal-page"><p class="legal-updated">Last updated: 9 October 2026</p><h2>Informational content</h2><p>Tekkatha provides technology news, explanations, specifications, comparisons, prices and buying guidance for general information. Content does not replace professional advice, and you remain responsible for your purchase decisions.</p><h2>Prices and availability</h2><p>Prices, configurations, stock and warranty terms can change. Check the verification label shown with a price and confirm the final details with the seller before purchasing.</p><h2>Reviews, AI and accuracy</h2><p>We aim to distinguish hands-on reviews from product overviews. Tekkatha AI generates conversational answers from a limited selection of catalog data. Its answer can be incomplete or mistaken and does not verify live retailer information, complete purchases or change website data. Confirm important details on the product page and with the seller.</p><h2>External links and purchases</h2><p>Links to manufacturers, retailers, advertisers and other websites are provided for convenience. A purchase takes place with the external seller under that seller’s terms. Sponsored and affiliate destinations should be identified where applicable.</p><h2>Acceptable use</h2><p>Do not misuse the website, attempt unauthorized access, interfere with its operation, scrape it in a way that harms availability, or submit unlawful or malicious material.</p><h2>Ownership and changes</h2><p>The website design, branding and original editorial material belong to their respective rights holders. These terms and website features may be updated as the service develops. Questions can be directed to <strong>${esc(siteSettings.contactEmail)}</strong>.</p></div></div>`;
+  return `<div class="container narrow-page">${pageHead('Clear information. Transparent decisions.', 'The editorial principles behind Tekkatha.', 'Editorial Policy')}<div class="prose page-content"><h2>Accuracy and sourcing</h2><p>Technical specifications should link to manufacturer documentation. News should identify its source and publication date. Corrections should explain what changed and why.</p><h2>Reviews and product overviews</h2><p>A hands-on review should state how the device was obtained and tested. Product overviews should be labeled clearly and should not imply testing that did not take place. The current preview contains sample editorial articles.</p><h2>Nepal prices and availability</h2><p>Published prices should identify the configuration, source, warranty terms and date checked. The prices in this preview are illustrative. They are not verified quotes or statements of local availability.</p><h2>Commercial relationships</h2><p>Advertising, sponsorships and affiliate links should be identified clearly. A commercial relationship should never be presented as an independent editorial judgment.</p><h2>AI assistance</h2><p>Tekkatha AI receives a limited set of locally selected product fields. Web search and tools are disabled. Product links and comparison data shown beside an answer are rebuilt from our catalog after the AI response, and important purchase details should still be confirmed with the seller.</p></div></div>`;
 }
 function notFound() {
   return `<div class="container page-content">${pageHead('This page is off the map.', 'The link may have changed, or the page is not here yet.', 'Page not found')}<div class="empty-state">${icon('search')}<h3>Let’s get you back to the tech.</h3><a class="btn" href="/">Go to the homepage ${icon('arrow')}</a></div></div>`;
@@ -993,5 +1317,9 @@ async function boot() {
 }
 const adDisplay = createAdDisplay({ api, apiBase: API_BASE });
 const footerSeo = createFooterSeo();
+const analytics = createAnalytics({ apiBase: API_BASE });
+const popupNotice = createPopupNotice({ apiBase: API_BASE });
 adDisplay.start();
+analytics.start();
+popupNotice.start();
 boot();
