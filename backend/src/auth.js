@@ -66,7 +66,18 @@ export function requireSuperAdmin(req, res, next) {
 }
 export function verifyOrigin(req, res, next) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-  if (!config.origins.includes(req.get('origin')))
+  const origin = req.get('origin');
+  let sameOrigin = false;
+  if (origin) {
+    try {
+      const suppliedOrigin = new URL(origin);
+      const requestOrigin = new URL(`${req.protocol}://${req.get('host')}`);
+      sameOrigin = origin === suppliedOrigin.origin && suppliedOrigin.origin === requestOrigin.origin;
+    } catch {
+      sameOrigin = false;
+    }
+  }
+  if (!config.origins.includes(origin) && !sameOrigin)
     return res.status(403).json({ error: 'This request origin is not allowed.' });
   if (!req.is('application/json')) return res.status(415).json({ error: 'Send application/json.' });
   next();
