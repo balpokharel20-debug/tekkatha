@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-labelledby="title desc">
+  <title id="title">Everyday tech accessories</title>
+  <desc id="desc">A flat illustration of earbuds, a watch, and a portable speaker.</desc>
+  <rect width="480" height="360" rx="18" fill="#f2f5fa"/>
+  <rect x="176" y="66" width="127" height="215" rx="30" fill="#16336a"/>
+  <rect x="190" y="83" width="99" height="181" rx="22" fill="#fff"/>
+  <rect x="198" y="98" width="83" height="151" rx="17" fill="#e6efff"/>
+  <circle cx="239" cy="176" r="30" fill="#1557d8"/>
+  <path d="M231 176h16m-8-8v16" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M208 66V43a31 31 0 0 1 31-31h1a31 31 0 0 1 31 31v23M208 281v22a31 31 0 0 0 31 31h1a31 31 0 0 0 31-31v-22" fill="none" stroke="#1557d8" stroke-width="17" stroke-linecap="round"/>
+  <path d="M122 121a45 45 0 0 0-30 43v27a18 18 0 0 0 36 0v-34a22 22 0 0 1 16-21" fill="none" stroke="#16336a" stroke-width="16" stroke-linecap="round"/>
+  <path d="M358 121a45 45 0 0 1 30 43v27a18 18 0 0 1-36 0v-34a22 22 0 0 0-16-21" fill="none" stroke="#16336a" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="111" cy="187" r="7" fill="#fff"/><circle cx="369" cy="187" r="7" fill="#fff"/>
+</svg>

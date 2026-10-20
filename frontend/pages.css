@@ -822,6 +822,7 @@ select {
 }
 .compare-category {
   display: flex;
+  flex-wrap: wrap;
   gap: 9px;
 }
 .compare-category .filter {

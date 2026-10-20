@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-labelledby="title desc">
+  <title id="title">Gaming monitor</title>
+  <desc id="desc">A flat illustration of a high-refresh gaming display and controller.</desc>
+  <rect width="480" height="360" rx="18" fill="#f2f5fa"/>
+  <rect x="54" y="45" width="372" height="220" rx="16" fill="#16336a"/>
+  <rect x="70" y="61" width="340" height="188" rx="8" fill="#e6efff"/>
+  <path d="M100 205 174 128l51 51 57-69 91 95" fill="none" stroke="#1557d8" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="174" cy="128" r="10" fill="#16336a"/><circle cx="282" cy="110" r="10" fill="#16336a"/>
+  <path d="M226 265v39m-54 0h108" stroke="#16336a" stroke-width="12" stroke-linecap="round"/>
+  <path d="M159 317h162" stroke="#1557d8" stroke-width="9" stroke-linecap="round"/>
+  <path d="M120 317c-15 0-24-11-21-25l8-35c3-14 17-20 29-12l23 15h162l23-15c12-8 26-2 29 12l8 35c3 14-6 25-21 25-8 0-15-4-22-10l-17-15H159l-17 15c-7 6-14 10-22 10Z" fill="#1557d8" stroke="#16336a" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M132 277v26m-13-13h26" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="342" cy="275" r="6" fill="#fff"/><circle cx="365" cy="290" r="6" fill="#fff"/>
+</svg>

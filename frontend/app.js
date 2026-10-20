@@ -131,7 +131,14 @@ function story(a) {
 }
 function product(p) {
   const variantCount = 1 + (p.variants?.length || 0);
-  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${p.priceStatus === 'verified' ? 'Source recorded' : p.priceStatus === 'sample' ? 'Sample price' : 'Unverified price'}${variantCount > 1 ? ` · ${variantCount} variants` : ''}</span><img src="${esc(p.image)}" alt="Illustration of ${esc(p.brand)} ${esc(p.name)}" loading="lazy"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
+  const priceTag = p.priceStatus === 'verified'
+    ? 'Source recorded'
+    : p.priceStatus === 'sample'
+      ? 'Sample price'
+      : p.priceCheckedAt
+        ? `Listing snapshot · ${new Date(p.priceCheckedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : 'Unverified price';
+  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${priceTag}${variantCount > 1 ? ` · ${variantCount} variants` : ''}</span><img src="${esc(p.image)}" alt="Illustration of ${esc(p.brand)} ${esc(p.name)}" loading="lazy"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
 }
 function title(name, link, label = 'View all') {
   return `<div class="section-title"><h2>${name}</h2>${link ? `<a class="text-link" href="${link}">${label} ${icon('arrow')}</a>` : ''}</div>`;
@@ -619,7 +626,9 @@ function priceLabel(p) {
     ? 'Illustrative price in Nepal'
     : p.priceStatus === 'verified'
       ? 'Retailer source recorded'
-      : 'Unverified Nepal price';
+      : p.priceCheckedAt
+        ? `Listing snapshot checked ${new Date(p.priceCheckedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        : 'Unverified Nepal price';
 }
 async function loadProductDetails(id) {
   if (productDetails.has(id)) return;
@@ -688,6 +697,37 @@ function productLongContent(p) {
   return `<div class="product-reading"><nav class="product-reading-nav" aria-label="Device reading sections">${description ? '<a href="#product-description">Full description ' + icon('arrow') + '</a>' : ''}${review ? '<a href="#product-review">Read the detailed review ' + icon('arrow') + '</a>' : ''}</nav>${description ? '<section id="product-description" class="product-long-content"><span class="eyebrow">A closer look</span><h2>Full description</h2>' + description + '</section>' : ''}${review ? '<section id="product-review" class="product-long-content product-review-section"><span class="eyebrow">Beyond the specifications</span><h2>Detailed review</h2>' + review + '</section>' : ''}</div>`;
 }
 
+function productSpecRows(p) {
+  const fields = {
+    Smartphones: [
+      ['Display', 'display', 'phone'], ['Processor', 'processor', 'cpu'],
+      ['Memory', 'memory', 'cpu'], ['Storage', 'storage', 'settings'],
+      ['Battery', 'battery', 'settings'], ['Camera', 'camera', 'phone'],
+    ],
+    Laptops: [
+      ['Display', 'display', 'laptop'], ['Processor', 'processor', 'cpu'],
+      ['Memory', 'memory', 'cpu'], ['Storage', 'storage', 'settings'],
+      ['Graphics', 'camera', 'cpu'], ['Battery', 'battery', 'settings'],
+    ],
+    'PC Components': [
+      ['Platform', 'display', 'cpu'], ['Component', 'processor', 'cpu'],
+      ['Capacity', 'memory', 'settings'], ['Interface', 'storage', 'settings'],
+      ['Details', 'battery', 'settings'], ['Form factor', 'camera', 'settings'],
+    ],
+    Gaming: [
+      ['Display', 'display', 'laptop'], ['Refresh / response', 'processor', 'cpu'],
+      ['Coverage / warranty', 'memory', 'settings'], ['Ports', 'storage', 'settings'],
+    ],
+    Accessories: [
+      ['Product type', 'display', 'settings'], ['Key features', 'processor', 'cpu'],
+      ['Size / output', 'memory', 'settings'], ['Connectivity', 'storage', 'settings'],
+      ['Battery', 'battery', 'settings'],
+    ],
+  };
+  return (fields[p.type] || fields.Smartphones)
+    .filter(([, key]) => String(p[key] || '').trim())
+    .map(([label, key, glyph]) => [label, key, p[key], glyph]);
+}
 function productPage(p) {
   const same = products.filter((x) => x.type === p.type && x.id !== p.id);
   const available = {
@@ -695,27 +735,7 @@ function productPage(p) {
     'in-stock': 'Listed as in stock',
     'out-of-stock': 'Listed as out of stock',
   };
-  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Product illustration</span><img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p><div class="detail-actions">${p.priceSource ? '<a class="btn buy-now-btn" href="' + esc(p.priceSource) + '" target="_blank" rel="sponsored noopener noreferrer">Buy now ' + icon('arrow') + '</a>' : ''}<button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${[
-    ['Display', p.display, 'phone'],
-    ['Processor', p.processor, 'cpu'],
-    ['Memory', p.memory, 'cpu'],
-    ['Storage', p.storage, 'settings'],
-    ['Battery', p.battery, 'settings'],
-    ['Camera', p.camera, 'phone'],
-  ]
-    .map(
-      ([name, value, i]) =>
-        '<div class="spec-item">' +
-        icon(i) +
-        '<div><span>' +
-        name +
-        '</span><strong>' +
-        esc(value || 'Not listed') +
-        '</strong></div></div>',
-    )
-    .join(
-      '',
-    )}</div></section>${productLongContent(p)}<section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
+  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Product illustration</span><img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p><div class="detail-actions">${p.priceSource ? '<a class="btn buy-now-btn" href="' + esc(p.priceSource) + '" target="_blank" rel="sponsored noopener noreferrer">Buy now ' + icon('arrow') + '</a>' : ''}<button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${productSpecRows(p).map(([name, , value, glyph]) => '<div class="spec-item">' + icon(glyph) + '<div><span>' + name + '</span><strong>' + esc(value) + '</strong></div></div>').join('') || '<p class="muted">Product specifications will be added soon.</p>'}</div></section>${productLongContent(p)}<section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
 }
 function productVariantMarkup(product) {
   const normalize = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -787,15 +807,17 @@ function comparePage() {
   const ps = compareProducts();
   const type = ps[0]?.type || 'Smartphones';
   const eligible = products.filter((p) => p.type === type);
+  const categories = [
+    ['Smartphones', 'phone'],
+    ['Laptops', 'laptop'],
+    ['PC Components', 'cpu'],
+    ['Gaming', 'compare'],
+    ['Accessories', 'settings'],
+  ];
   const allRows = [
     ['Brand', 'brand'],
     ['Category', 'type'],
-    ['Display', 'display'],
-    ['Processor', 'processor'],
-    ['Memory', 'memory'],
-    ['Storage', 'storage'],
-    ['Battery', 'battery'],
-    ['Camera', 'camera'],
+    ...productSpecRows(ps[0]).map(([label, key]) => [label, key]),
     ['Nepal price', 'price'],
     ['Price label', 'priceStatus'],
     ['Availability', 'availability'],
@@ -803,7 +825,7 @@ function comparePage() {
   const rows = showDifferences
     ? allRows.filter(([label, key]) => new Set(ps.map((p) => p[key])).size > 1)
     : allRows;
-  return `<div class="container">${pageHead('Compare. Understand. Decide.', 'Put up to three products side by side. Look beyond the headline specifications.', 'Compare Products')}<div class="compare-top"><div class="compare-category"><button class="filter ${type === 'Smartphones' ? 'active' : ''}" data-compare-category="Smartphones">${icon('phone')} Smartphones</button><button class="filter ${type === 'Laptops' ? 'active' : ''}" data-compare-category="Laptops">${icon('laptop')} Laptops</button></div><label class="difference-control"><input type="checkbox" id="differences-only" ${showDifferences ? 'checked' : ''}> Show differences only</label></div><div class="compare-pickers">${[0, 1, 2].map((i) => `<div class="compare-picker"><label for="compare-${i}">Product ${i + 1}${i === 2 ? ' (optional)' : ''}</label><select id="compare-${i}" data-compare-slot="${i}"><option value="">Choose a product</option>${eligible.map((p) => `<option value="${p.id}" ${ps[i]?.id === p.id ? 'selected' : ''} ${ps.some((x, n) => n !== i && x.id === p.id) ? 'disabled' : ''}>${esc(p.brand)} ${esc(p.name)}</option>`).join('')}</select>${ps[i] ? `<img src="${esc(ps[i].image)}" alt="Illustration of ${esc(ps[i].name)}"><h2>${esc(ps[i].name)}</h2><span class="price">${money(ps[i].price)}</span><p>${priceLabel(ps[i])}</p>` : `<div class="picker-empty">${icon('plus')}<span>Add another perspective</span></div>`}</div>`).join('')}</div><div class="catalog-banner compare-notice">${icon('shield')}<p>Check the verification label for each price. Confirm current pricing, stock and local warranty before deciding.</p></div><div class="table-scroll page-content"><table class="compare-table"><caption class="sr-only">Product specification comparison</caption><thead><tr><th scope="col">Specifications</th>${ps.map((p) => `<th scope="col">${esc(p.brand)} ${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(([label, key]) => `<tr><th scope="row">${label}</th>${ps.map((p) => `<td>${key === 'price' ? money(p[key]) : key === 'priceStatus' ? priceLabel(p) : esc(p[key])}</td>`).join('')}</tr>`).join('')}${!rows.length ? `<tr><td colspan="${ps.length + 1}">No differences to show. Add another product or display all specifications.</td></tr>` : ''}<tr><th scope="row">Manufacturer source</th>${ps.map((p) => `<td><a class="text-link" href="${esc(p.source)}" target="_blank" rel="noopener noreferrer">Official specifications ${icon('arrow')}</a></td>`).join('')}</tr></tbody></table></div></div>`;
+  return `<div class="container">${pageHead('Compare. Understand. Decide.', 'Put up to three products side by side. Look beyond the headline specifications.', 'Compare Products')}<div class="compare-top"><div class="compare-category">${categories.map(([category, categoryIcon]) => `<button class="filter ${type === category ? 'active' : ''}" data-compare-category="${category}">${icon(categoryIcon)} ${category}</button>`).join('')}</div><label class="difference-control"><input type="checkbox" id="differences-only" ${showDifferences ? 'checked' : ''}> Show differences only</label></div><div class="compare-pickers">${[0, 1, 2].map((i) => `<div class="compare-picker"><label for="compare-${i}">Product ${i + 1}${i === 2 ? ' (optional)' : ''}</label><select id="compare-${i}" data-compare-slot="${i}"><option value="">Choose a product</option>${eligible.map((p) => `<option value="${p.id}" ${ps[i]?.id === p.id ? 'selected' : ''} ${ps.some((x, n) => n !== i && x.id === p.id) ? 'disabled' : ''}>${esc(p.brand)} ${esc(p.name)}</option>`).join('')}</select>${ps[i] ? `<img src="${esc(ps[i].image)}" alt="Illustration of ${esc(ps[i].name)}"><h2>${esc(ps[i].name)}</h2><span class="price">${money(ps[i].price)}</span><p>${priceLabel(ps[i])}</p>` : `<div class="picker-empty">${icon('plus')}<span>Add another perspective</span></div>`}</div>`).join('')}</div><div class="catalog-banner compare-notice">${icon('shield')}<p>Prices are dated research snapshots. Confirm current pricing, stock and local warranty before deciding.</p></div><div class="table-scroll page-content"><table class="compare-table"><caption class="sr-only">Product specification comparison</caption><thead><tr><th scope="col">Specifications</th>${ps.map((p) => `<th scope="col">${esc(p.brand)} ${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(([label, key]) => `<tr><th scope="row">${label}</th>${ps.map((p) => `<td>${key === 'price' ? money(p[key]) : key === 'priceStatus' ? priceLabel(p) : esc(p[key])}</td>`).join('')}</tr>`).join('')}${!rows.length ? `<tr><td colspan="${ps.length + 1}">No differences to show. Add another product or display all specifications.</td></tr>` : ''}<tr><th scope="row">Manufacturer source</th>${ps.map((p) => `<td>${p.source ? `<a class="text-link" href="${esc(p.source)}" target="_blank" rel="noopener noreferrer">Official specifications ${icon('arrow')}</a>` : 'Not listed'}</td>`).join('')}</tr></tbody></table></div></div>`;
 }
 function bindCompare() {
   if (!$('#differences-only')) return;
@@ -875,14 +897,6 @@ function articleProductsMarkup(article) {
     })
     .filter(Boolean);
   if (!selectedProducts.length) return '';
-  const specs = (product) => [
-    ['Display', product.display],
-    ['Processor', product.processor],
-    ['Memory', product.memory],
-    ['Storage', product.storage],
-    ['Battery', product.battery],
-    ['Camera', product.camera],
-  ];
   const reviewHref = (product) =>
     `/product/${encodeURIComponent(product.id)}${hasProductReview(product) ? '#product-review' : ''}`;
   const reviewLabel = (product) =>
@@ -890,21 +904,26 @@ function articleProductsMarkup(article) {
   const buyLink = (product, small = false) =>
     product.priceSource
       ? `<a class="guide-buy-link ${small ? 'small' : ''}" href="${esc(product.priceSource)}" target="_blank" rel="sponsored noopener noreferrer">Buy now ${icon('arrow')}</a>`
-      : `<span class="guide-buy-unavailable ${small ? 'small' : ''}">Buy link not added</span>`;
+      : '';
   const deviceSections = selectedProducts
     .map(({ entry, product, index }) => {
       const description = renderProductText(entry.description || product.note || product.description || '');
-      return `<article class="buying-guide-device" id="guide-device-${esc(product.id)}"><header class="guide-device-head"><span class="guide-pick-number">${String(index + 1).padStart(2, '0')}</span><div><span class="eyebrow">${esc(product.type)}</span><h2><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a></h2><p>${esc(product.variant || 'Base configuration')}</p></div></header><div class="guide-device-layout"><a class="guide-device-image" href="${reviewHref(product)}"><img src="${esc(product.image)}" alt="${esc(product.brand + ' ' + product.name)}" loading="lazy"></a><div class="guide-device-content"><div class="guide-device-description">${description || '<p>See the product page for complete device details.</p>'}</div><dl class="guide-device-specs">${specs(product).map(([label, value]) => `<div><dt>${label}</dt><dd>${esc(value || 'Not listed')}</dd></div>`).join('')}</dl><div class="guide-device-footer"><div class="guide-device-price"><span>Price in Nepal</span><strong>${money(product.price)}</strong><small>${priceLabel(product)}</small></div><div class="guide-device-actions"><a class="guide-review-link" href="${reviewHref(product)}">${reviewLabel(product)} ${icon('arrow')}</a>${buyLink(product)}</div></div></div></div></article>`;
+      const specs = productSpecRows(product);
+      const specsMarkup = specs.length
+        ? specs.map(([label, , value]) => `<div><dt>${label}</dt><dd>${esc(value)}</dd></div>`).join('')
+        : '<div><dt>Specifications</dt><dd>Confirm the exact local configuration.</dd></div>';
+      return `<article class="buying-guide-device" id="guide-device-${esc(product.id)}"><header class="guide-device-head"><span class="guide-pick-number">${String(index + 1).padStart(2, '0')}</span><div><span class="eyebrow">${esc(product.type)}</span><h2><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a></h2><p>${esc(product.variant || 'Base configuration')}</p></div></header><div class="guide-device-layout"><a class="guide-device-image" href="${reviewHref(product)}"><img src="${esc(product.image)}" alt="${esc(product.brand + ' ' + product.name)}" loading="lazy"></a><div class="guide-device-content"><div class="guide-device-description">${description || '<p>See the product page for complete device details.</p>'}</div><dl class="guide-device-specs">${specsMarkup}</dl><div class="guide-device-footer"><div class="guide-device-price"><span>Price in Nepal</span><strong>${money(product.price)}</strong><small>${priceLabel(product)}</small></div><div class="guide-device-actions"><a class="guide-review-link" href="${reviewHref(product)}">${reviewLabel(product)} ${icon('arrow')}</a>${buyLink(product)}</div></div></div></div></article>`;
     })
     .join('');
+  const specLabels = [...new Set(selectedProducts.flatMap(({ product }) => productSpecRows(product).map(([label]) => label)))];
   const tableRows = [
     ['Price in Nepal', (product) => `<strong class="guide-table-price">${money(product.price)}</strong><small>${priceLabel(product)}</small>`],
-    ...['Display', 'Processor', 'Memory', 'Storage', 'Battery', 'Camera'].map((label, index) => [
+    ...specLabels.map((label) => [
       label,
-      (product) => esc(specs(product)[index][1] || 'Not listed'),
+      (product) => esc(productSpecRows(product).find(([rowLabel]) => rowLabel === label)?.[2] || 'Not listed'),
     ]),
   ];
-  const comparison = `<section class="guide-device-comparison" id="guide-device-comparison"><div class="guide-comparison-head"><span class="eyebrow">Quick comparison</span><h2>Every device at a glance</h2><p>Open a device name for our full details and review, or use Buy now to continue to the retailer.</p></div><div class="guide-table-scroll"><table class="guide-comparison-table"><caption class="sr-only">Specifications and Nepal prices for every device in this buying guide</caption><thead><tr><th scope="col">Specification</th>${selectedProducts.map(({ product }) => `<th scope="col"><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a><small>${esc(product.variant || 'Base configuration')}</small></th>`).join('')}</tr></thead><tbody>${tableRows.map(([label, output]) => `<tr><th scope="row">${label}</th>${selectedProducts.map(({ product }) => `<td>${output(product)}</td>`).join('')}</tr>`).join('')}<tr class="guide-action-row"><th scope="row">Links</th>${selectedProducts.map(({ product }) => `<td><div class="guide-table-actions"><a href="${reviewHref(product)}">${reviewLabel(product)}</a>${buyLink(product, true)}</div></td>`).join('')}</tr></tbody></table></div></section>`;
+  const comparison = `<section class="guide-device-comparison" id="guide-device-comparison"><div class="guide-comparison-head"><span class="eyebrow">Quick comparison</span><h2>Every device at a glance</h2><p>Open a device name for its specifications and editorial assessment. Prices are dated listing snapshots.</p></div><div class="guide-table-scroll"><table class="guide-comparison-table"><caption class="sr-only">Specifications and Nepal prices for every device in this buying guide</caption><thead><tr><th scope="col">Specification</th>${selectedProducts.map(({ product }) => `<th scope="col"><a href="${reviewHref(product)}">${esc(product.brand)} ${esc(product.name)}</a><small>${esc(product.variant || 'Base configuration')}</small></th>`).join('')}</tr></thead><tbody>${tableRows.map(([label, output]) => `<tr><th scope="row">${label}</th>${selectedProducts.map(({ product }) => `<td>${output(product)}</td>`).join('')}</tr>`).join('')}<tr class="guide-action-row"><th scope="row">Product details</th>${selectedProducts.map(({ product }) => `<td><div class="guide-table-actions"><a href="${reviewHref(product)}">${reviewLabel(product)}</a></div></td>`).join('')}</tr></tbody></table></div></section>`;
   return `<section class="article-products"><div class="section-title"><div><span class="eyebrow">The shortlist</span><h2>Devices in this buying guide</h2></div><span class="muted">${selectedProducts.length} included</span></div><div class="article-product-list">${deviceSections}</div>${comparison}</section>`;
 }
 const articlePageWithProducts = articlePage;

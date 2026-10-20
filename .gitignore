@@ -9,4 +9,5 @@ deploy/production.env
 !.env.example
 frontend/dist/
 admin/dist/
+/public/
 backend/coverage/

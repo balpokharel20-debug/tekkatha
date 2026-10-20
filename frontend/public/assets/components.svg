@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" role="img" aria-labelledby="title desc">
+  <title id="title">PC components</title>
+  <desc id="desc">A flat illustration of a motherboard and memory modules.</desc>
+  <rect width="480" height="360" rx="18" fill="#f2f5fa"/>
+  <rect x="107" y="48" width="266" height="264" rx="15" fill="#dce8f8" stroke="#16336a" stroke-width="8"/>
+  <rect x="190" y="112" width="102" height="96" rx="10" fill="#1557d8" stroke="#16336a" stroke-width="8"/>
+  <rect x="205" y="128" width="72" height="64" rx="5" fill="#fff"/>
+  <path d="M147 80h70m46 0h70M147 251h70m46 0h70M142 120h34m128 0h34M142 204h34m128 0h34" stroke="#16336a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M153 96v130m174-130v130M178 80v20m124-20v20m-124 151v20m124-20v20" stroke="#1557d8" stroke-width="7"/>
+  <rect x="47" y="112" width="28" height="137" rx="7" fill="#16336a"/>
+  <rect x="405" y="112" width="28" height="137" rx="7" fill="#16336a"/>
+  <path d="M54 135h14m-14 24h14m-14 24h14m-14 24h14M412 135h14m-14 24h14m-14 24h14m-14 24h14" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="129" cy="72" r="7" fill="#1557d8"/><circle cx="351" cy="72" r="7" fill="#1557d8"/><circle cx="129" cy="286" r="7" fill="#1557d8"/><circle cx="351" cy="286" r="7" fill="#1557d8"/>
+</svg>
