@@ -24,6 +24,13 @@ function setMeta(html, attribute, name, content) {
   return html.replace('</head>', '  ' + tag + String.fromCharCode(10) + '</head>');
 }
 
+function setBrandIcon(html, settings) {
+  const href = escapeHtml(settings.logoImage || '/assets/mark.svg');
+  const tag = `<link rel="icon" href="${href}" />`;
+  const pattern = /<link\b(?=[^>]*\brel=["'][^"']*\bicon\b[^"']*["'])[^>]*>/i;
+  return pattern.test(html) ? html.replace(pattern, tag) : html.replace('</head>', `  ${tag}\n</head>`);
+}
+
 function articleMarkup(article, url, siteName) {
   const sections = article.body.map(({ heading }, index) =>
     `<a href="#section-${index}">${escapeHtml(heading)}</a>`,
@@ -128,11 +135,16 @@ function productMarkup(product, siteUrl) {
 
 export function renderArticleDocument({ template, article, settings, siteUrl }) {
   const canonical = new URL(`/article/${encodeURIComponent(article.id)}`, `${siteUrl}/`).href;
-  const title = `${article.title} — ${settings.siteName}`;
+  const titleSuffix = settings.pageTitleSuffix ?? settings.siteName;
+  const title = titleSuffix
+    ? `${article.title} — ${titleSuffix}`
+    : article.title;
   const description = article.excerpt || settings.description;
   const image = new URL(article.image, `${siteUrl}/`).href;
   const seoData = buildSeoData({ settings, url: canonical, title, description, article });
   let html = template.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
+  html = setBrandIcon(html, settings);
+  if (settings.primaryColor) html = setMeta(html, 'name', 'theme-color', settings.primaryColor);
   html = setMeta(html, 'name', 'description', description);
   html = setMeta(html, 'property', 'og:site_name', settings.siteName);
   html = setMeta(html, 'property', 'og:type', 'article');
@@ -165,11 +177,16 @@ export function renderArticleDocument({ template, article, settings, siteUrl }) 
 
 export function renderProductDocument({ template, product, settings, siteUrl }) {
   const canonical = new URL(`/product/${encodeURIComponent(product.id)}`, `${siteUrl}/`).href;
-  const title = `${product.brand} ${product.name} — ${settings.siteName}`;
+  const titleSuffix = settings.pageTitleSuffix ?? settings.siteName;
+  const title = titleSuffix
+    ? `${product.brand} ${product.name} — ${titleSuffix}`
+    : `${product.brand} ${product.name}`;
   const description = productDescription(product) || settings.description;
   const image = productImageUrl(product.image, siteUrl);
   const seoData = buildSeoData({ settings, url: canonical, title, description, product });
   let html = template.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
+  html = setBrandIcon(html, settings);
+  if (settings.primaryColor) html = setMeta(html, 'name', 'theme-color', settings.primaryColor);
   html = setMeta(html, 'name', 'description', description);
   html = setMeta(html, 'property', 'og:site_name', settings.siteName);
   html = setMeta(html, 'property', 'og:type', 'website');

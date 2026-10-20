@@ -68,3 +68,9 @@ export function getPublicProductImage(record, slot) {
   const [, subtype, encoded] = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
   return { type: `image/${subtype}`, bytes: Buffer.from(encoded, 'base64') };
 }
+
+export function getPublicBrandLogo(settings) {
+  if (!settings || !isEncodedProductImage(settings.logoImage)) return null;
+  const [, subtype, encoded] = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(settings.logoImage);
+  return { type: `image/${subtype}`, bytes: Buffer.from(encoded, 'base64') };
+}

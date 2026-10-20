@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title">
+  <title id="title">Tablet device illustration</title>
+  <rect width="640" height="480" rx="24" fill="#f3f6fb"/>
+  <rect x="205" y="40" width="230" height="400" rx="28" fill="#15243b"/>
+  <rect x="216" y="57" width="208" height="366" rx="18" fill="#ffffff"/>
+  <rect x="231" y="74" width="178" height="280" rx="8" fill="#dce9fa"/>
+  <path d="M231 275h178v79H231z" fill="#1357d6"/>
+  <circle cx="320" cy="386" r="10" fill="#aab8ca"/>
+  <circle cx="320" cy="50" r="3" fill="#aab8ca"/>
+  <path d="M252 102h105M252 123h142M252 144h118" stroke="#7896bd" stroke-linecap="round" stroke-width="8"/>
+  <rect x="251" y="181" width="137" height="53" rx="8" fill="#ffffff"/>
+  <path d="M267 199h53M267 217h83" stroke="#7896bd" stroke-linecap="round" stroke-width="7"/>
+</svg>

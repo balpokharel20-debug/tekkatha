@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { productSchema } from '../src/schemas.js';
+import { getPublicBrandLogo } from '../src/product-image.js';
 import { fitImageDimensions, MAX_PRODUCT_IMAGE_BYTES } from '../../shared/product-image.js';
 import { redImage } from './fixtures/images.js';
 
@@ -11,6 +12,13 @@ const { id, ...product } = seed.products[0];
 test('product images accept stored PNG text and existing URL/asset records', () => {
   for (const image of [redImage, '/assets/phone.svg', 'https://example.com/phone.webp'])
     assert.equal(productSchema.safeParse({ ...product, image }).success, true);
+});
+
+test('uploaded brand logos are served as validated public image bytes', () => {
+  const logo = getPublicBrandLogo({ logoImage: redImage });
+  assert.equal(logo.type, 'image/png');
+  assert.deepEqual(logo.bytes, Buffer.from(redImage.split(',')[1], 'base64'));
+  assert.equal(getPublicBrandLogo({ logoImage: 'data:image/svg+xml;base64,PHN2Zy8+' }), null);
 });
 
 test('product images reject SVG, malformed Base64, mismatched image types and oversized text', () => {

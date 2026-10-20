@@ -172,6 +172,14 @@ select {
   min-height: 35px;
   font-size: 12px;
 }
+.catalog-pagination {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0 8px;
+}
+.catalog-pagination [hidden] {
+  display: none;
+}
 .catalog-grid .product-visual img {
   height: 230px;
 }

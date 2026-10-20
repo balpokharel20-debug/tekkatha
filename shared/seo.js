@@ -19,7 +19,7 @@ export function buildSeoData({ settings, url, title, description = settings.desc
       '@id': organization,
       name: settings.siteName,
       url: home,
-      logo: new URL('/assets/mark.svg', home).href,
+      logo: new URL(settings.logoImage || '/assets/mark.svg', home).href,
       slogan: settings.tagline,
     },
     {

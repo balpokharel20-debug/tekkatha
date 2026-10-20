@@ -178,6 +178,7 @@ h3 {
 .logo img {
   width: 36px;
   height: 36px;
+  object-fit: contain;
 }
 .logo b {
   color: #78a6ff;

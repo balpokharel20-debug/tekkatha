@@ -42,8 +42,8 @@ import {
 } from './schemas.js';
 import { answerQuestion } from './assistant.js';
 import { renderArticleDocument, renderProductDocument } from './prerender.js';
-import { getPublicProductImage, publicProduct } from './product-image.js';
-import { DEFAULT_BRAND_SETTINGS } from '../../shared/brand-settings.js';
+import { getPublicBrandLogo, getPublicProductImage, isEncodedProductImage, publicProduct } from './product-image.js';
+import { DEFAULT_BRAND_SETTINGS, withDefaultBrandSettings } from '../../shared/brand-settings.js';
 export const app = express();
 app.set('trust proxy', config.trustProxyHops);
 if (config.runningOnVercel) {
@@ -66,8 +66,22 @@ const publicDocumentUrl = new URL('../../frontend/dist/index.html', import.meta.
 export const publicDocumentTemplate = existsSync(publicDocumentUrl)
   ? readFileSync(publicDocumentUrl, 'utf8')
   : '';
+function publicBrandSettings(record) {
+  const settings = withDefaultBrandSettings(publicRecord(record) || {});
+  if (isEncodedProductImage(settings.logoImage)) {
+    const version = settings.updatedAt ? new Date(settings.updatedAt).getTime() : 0;
+    settings.logoImage = `/api/settings/logo?v=${version}`;
+  }
+  return settings;
+}
 app.disable('x-powered-by');
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: { imgSrc: ["'self'", 'data:', 'blob:', 'https:'] },
+    },
+  }),
+);
 app.use(
   cors({
     origin: (origin, callback) => callback(null, !origin || config.origins.includes(origin)),
@@ -76,6 +90,7 @@ app.use(
 );
 app.use('/api/admin/ads', express.json({ limit: '3mb' }));
 app.use('/api/admin/products', express.json({ limit: config.runningOnVercel ? '4mb' : '10mb' }));
+app.use('/api/admin/settings', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use(
@@ -135,9 +150,19 @@ app.get('/api/health', async (_req, res, next) => {
 });
 app.get('/api/settings', async (_req, res, next) => {
   try {
-    res.json(publicRecord(await db.collection('settings').findOne({ id: 'brand' })) || DEFAULT_BRAND_SETTINGS);
+    res.json(publicBrandSettings(await db.collection('settings').findOne({ id: 'brand' })));
   } catch (e) {
     next(e);
+  }
+});
+app.get('/api/settings/logo', async (_req, res, next) => {
+  try {
+    const settings = await db.collection('settings').findOne({ id: 'brand' });
+    const logo = getPublicBrandLogo(settings);
+    if (!logo) return res.status(404).type('text/plain').send('Logo not found.');
+    res.set('Cache-Control', 'public, max-age=31536000, immutable').type(logo.type).send(logo.bytes);
+  } catch (error) {
+    next(error);
   }
 });
 function runningAdsFilter() {
@@ -285,11 +310,7 @@ app.get('/article/:id', async (req, res, next) => {
       .send(renderArticleDocument({
         template: publicDocumentTemplate,
         article,
-        settings: {
-          siteName: settings?.siteName || 'Tekkatha',
-          tagline: settings?.tagline || 'Technology, Explained.',
-          description: settings?.description || 'Technology news, product reviews, prices, comparisons, and buying guides.',
-        },
+        settings,
         siteUrl: config.publicSiteUrl,
       }));
   } catch (error) {
@@ -304,18 +325,14 @@ app.get('/product/:id', async (req, res, next) => {
       deletedAt: null,
     });
     if (!record) return res.status(404).type('text/html').send(publicDocumentTemplate);
-    const settings = await db.collection('settings').findOne({ id: 'brand' });
+    const settings = publicBrandSettings(await db.collection('settings').findOne({ id: 'brand' }));
     res
       .set('Cache-Control', 'public, max-age=0, must-revalidate')
       .type('html')
       .send(renderProductDocument({
         template: publicDocumentTemplate,
         product: publicProduct(record),
-        settings: {
-          siteName: settings?.siteName || 'Tekkatha',
-          tagline: settings?.tagline || 'Technology, Explained.',
-          description: settings?.description || 'Technology news, product reviews, prices, comparisons, and buying guides.',
-        },
+        settings,
         siteUrl: config.publicSiteUrl,
       }));
   } catch (error) {
@@ -592,18 +609,17 @@ for (const [name, schema] of [
 app.put('/api/admin/settings', async (req, res, next) => {
   try {
     const value = settingsSchema.parse(req.body);
+    const current = await db.collection('settings').findOne({ id: 'brand' });
     if (req.admin.role !== 'super_admin') {
-      const current = await db.collection('settings').findOne(
-        { id: 'brand' },
-        { projection: { _id: 0, footerSeoCode: 1 } },
-      );
       if ((current?.footerSeoCode || '') !== value.footerSeoCode)
         return res.status(403).json({ error: 'Only a super administrator can change public site scripts.' });
     }
+    if (/^\/api\/settings\/logo(?:\?v=\d+)?$/.test(value.logoImage))
+      value.logoImage = current?.logoImage || DEFAULT_BRAND_SETTINGS.logoImage;
     await db
       .collection('settings')
       .updateOne({ id: 'brand' }, { $set: { ...value, updatedAt: new Date() } }, { upsert: true });
-    res.json(publicRecord(await db.collection('settings').findOne({ id: 'brand' })));
+    res.json(publicBrandSettings(await db.collection('settings').findOne({ id: 'brand' })));
   } catch (e) {
     next(e);
   }

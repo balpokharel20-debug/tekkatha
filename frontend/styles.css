@@ -164,6 +164,7 @@ textarea:focus-visible {
 .brand img {
   height: 37px;
   width: 37px;
+  object-fit: contain;
 }
 .brand-text {
   font-family: Manrope, Arial, sans-serif;

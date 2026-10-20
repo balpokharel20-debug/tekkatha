@@ -67,9 +67,9 @@ const categories = [
   'Buying Guides',
   'PC Builds',
 ];
-const types = ['Smartphones', 'Laptops', 'PC Components', 'Gaming', 'Accessories'];
+const types = ['Smartphones', 'Laptops', 'Tablets', 'PC Components', 'Gaming', 'Accessories'];
 const logo = () =>
-  `<a class="logo" href="${ADMIN_HOME}"><img src="${ASSET_BASE}assets/mark.svg" alt=""><span>Tekkatha<b>.</b></span></a>`;
+  `<a class="logo" href="${ADMIN_HOME}"><img src="${esc(settings?.logoImage || `${ASSET_BASE}assets/mark.svg`)}" alt=""><span>${esc(settings?.siteName || 'Tekkatha')}<b>.</b></span></a>`;
 const date = (d) =>
   d
     ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -163,7 +163,7 @@ function layout(content) {
     ['ads', 'Ads & placements', 'external'],
     ['popup', 'Popup notices', 'spark'],
     ['analytics', 'Viewer analytics', 'chart'],
-    ['settings', 'Brand settings', 'settings'],
+    ['settings', 'Site settings', 'settings'],
     ...(admin?.role === 'super_admin' ? [['admins', 'Administrators', 'users']] : []),
     ['assistant', 'Tekkatha AI', 'spark'],
   ];
@@ -329,6 +329,11 @@ function field(label, name, value = '', options = {}) {
         ? `<textarea name="${name}" rows="${rows}" ${required ? 'required' : ''} ${disabled ? 'disabled' : ''} ${max ? 'maxlength="' + max + '"' : ''}>${esc(value)}</textarea>`
         : `<input name="${name}" type="${type}" value="${esc(value)}" ${required ? 'required' : ''} ${disabled ? 'disabled' : ''} ${min !== undefined ? 'min="' + min + '"' : ''} ${type === 'number' && max ? 'max="' + max + '"' : ''} ${type !== 'number' && max ? 'maxlength="' + max + '"' : ''} ${step ? 'step="' + step + '"' : ''}>`
   }${hint ? `<small>${hint}</small>` : ''}</label>`;
+}
+function brandLogoField(image) {
+  const currentImage = image || `${ASSET_BASE}assets/mark.svg`;
+  const urlValue = image?.startsWith('data:image/') ? '' : image || '';
+  return `<div class="device-image-field wide brand-logo-field"><span class="form-label">Brand logo and browser icon</span><div class="device-image-upload"><div class="device-image-preview"><img id="brand-logo-preview" src="${esc(currentImage)}" alt="Current site logo"></div><div><label class="form-label" for="brand-logo-file">Upload from your computer<input id="brand-logo-file" type="file" accept="image/jpeg,image/png,image/webp"></label><p>JPEG, PNG, or WebP · up to 12 MB. Automatically resized and compressed to 350 KB or less.</p><p id="brand-logo-status" role="status">${image?.startsWith('data:image/') ? 'Uploaded logo saved with the site settings.' : image ? 'Current logo shown in the preview.' : 'Upload a logo or enter its URL.'}</p><p id="brand-logo-error" role="alert" hidden></p></div></div><input type="hidden" name="logoImage" value="${esc(image || '')}"><label class="form-label">Or use a logo image URL / asset path<input name="logoImageUrl" type="text" value="${esc(urlValue)}" maxlength="2000" placeholder="https://…/logo.png or /assets/logo.svg"><small>This logo is also used as the browser icon and in organization metadata.</small></label></div>`;
 }
 async function openEditor(collection, id) {
   view = collection + '-editor';
@@ -866,8 +871,8 @@ async function saveEditor(collection) {
 function settingsPage() {
   const s = settings;
   const markup = (
-    heading('A consistent Tekkatha.', 'The shared identity behind your publication.') +
-    `<div class="settings-notice">Brand settings are saved in MongoDB. Email addresses remain naming placeholders until actual mailboxes are configured.</div><form id="settings-form" class="settings-form"><div id="settings-error"></div><section class="form-panel"><h2>Publication identity</h2><div class="form-grid">${field('Website name', 'siteName', s.siteName, { required: true, max: 60 })}${field('Default tagline', 'tagline', s.tagline, { required: true, max: 120 })}${field('SEO description', 'description', s.description, { required: true, type: 'textarea', wide: true, max: 400 })}${field('Primary brand color', 'primaryColor', s.primaryColor, { type: 'color', required: true })}${field('Admin workspace name', 'adminName', s.adminName, { required: true, max: 60 })}${field('Assistant name', 'aiName', s.aiName, { required: true, max: 60 })}</div></section><section class="form-panel"><h2>Contact naming</h2><div class="form-grid">${[
+    heading(`A consistent ${esc(s.siteName)}.`, 'The shared identity behind your publication.') +
+    `<div class="settings-notice">These settings update the public site identity, homepage introduction, shared page titles, browser icon, and footer. Email addresses remain naming placeholders until actual mailboxes are configured.</div><form id="settings-form" class="settings-form"><div id="settings-error"></div><section class="form-panel"><h2>Publication identity</h2><div class="form-grid">${field('Website name', 'siteName', s.siteName, { required: true, max: 60 })}${field('Top bar tagline', 'tagline', s.tagline, { required: true, max: 120 })}${field('Header tagline', 'headerTagline', s.headerTagline, { required: true, max: 120 })}${brandLogoField(s.logoImage)}${field('SEO description', 'description', s.description, { required: true, type: 'textarea', wide: true, max: 400 })}${field('Primary brand color', 'primaryColor', s.primaryColor, { type: 'color', required: true })}${field('Admin workspace name', 'adminName', s.adminName, { required: true, max: 60 })}${field('Assistant name', 'aiName', s.aiName, { required: true, max: 60 })}</div></section><section class="form-panel"><h2>Homepage and page titles</h2><div class="form-grid">${field('Homepage heading', 'homepageTitle', s.homepageTitle, { required: true, max: 100 })}${field('Homepage subtitle', 'homepageSubtitle', s.homepageSubtitle, { required: true, max: 200 })}${field('Homepage browser title suffix', 'homepageMetaTitle', s.homepageMetaTitle, { required: true, max: 120 })}${field('Suffix for article, product, and section titles', 'pageTitleSuffix', s.pageTitleSuffix, { max: 100, hint: 'Leave blank to show each page title without a suffix.' })}${field('Footer description', 'footerDescription', s.footerDescription, { required: true, type: 'textarea', wide: true, max: 300 })}</div></section><section class="form-panel"><h2>Contact naming</h2><div class="form-grid">${[
       ['General contact', 'contactEmail'],
       ['Editorial', 'editorialEmail'],
       ['Advertising', 'advertiseEmail'],
@@ -876,21 +881,77 @@ function settingsPage() {
       .map(([n, k]) => field(n, k, s[k], { type: 'email', required: true }))
       .join(
         '',
-    )}</div></section><section class="form-panel seo-panel"><h2>Footer SEO code</h2><p class="seo-help">Tekkatha automatically adds Organization, WebSite, and WebPage structured data below the footer. Page titles, descriptions, and canonical URLs update as readers navigate.</p><details class="seo-preview"><summary>View the automatic SEO HTML</summary><pre><code>${esc(buildSeoMarkup({ settings: s, url: WEBSITE, title: s.siteName + ' — Tech News, Reviews, Prices & Buying Guides' }))}</code></pre></details>${field('Additional SEO HTML & scripts', 'footerSeoCode', s.footerSeoCode || '', { type: 'textarea', rows: 12, max: MAX_FOOTER_SEO_CODE, disabled: admin?.role !== 'super_admin', hint: admin?.role === 'super_admin' ? 'Super administrator access only. This code is inserted into the public website and can run scripts for every visitor. Up to 50,000 characters.' : 'Only a super administrator can change public site scripts.' })}</section><button class="btn" type="submit">${icon('check')} Save brand settings</button></form>`
+    )}</div></section><section class="form-panel seo-panel"><h2>Footer SEO code</h2><p class="seo-help">The website automatically adds Organization, WebSite, and WebPage structured data below the footer. Page titles, descriptions, and canonical URLs update as readers navigate.</p><details class="seo-preview"><summary>View the automatic SEO HTML</summary><pre><code>${esc(buildSeoMarkup({ settings: s, url: WEBSITE, title: s.siteName + ' — ' + s.homepageMetaTitle }))}</code></pre></details>${field('Additional SEO HTML & scripts', 'footerSeoCode', s.footerSeoCode || '', { type: 'textarea', rows: 12, max: MAX_FOOTER_SEO_CODE, disabled: admin?.role !== 'super_admin', hint: admin?.role === 'super_admin' ? 'Super administrator access only. This code is inserted into the public website and can run scripts for every visitor. Up to 50,000 characters.' : 'Only a super administrator can change public site scripts.' })}</section><button class="btn" type="submit">${icon('check')} Save site settings</button></form>`
   );
   return markup;
 }
 function bindSettings() {
-  $('#settings-form').addEventListener('submit', async (e) => {
+  const form = $('#settings-form');
+  const fileInput = $('#brand-logo-file', form);
+  const imageInput = form.elements.logoImage;
+  const urlInput = form.elements.logoImageUrl;
+  const preview = $('#brand-logo-preview', form);
+  const status = $('#brand-logo-status', form);
+  const error = $('#brand-logo-error', form);
+  const showPreview = (value) => {
+    preview.hidden = !value;
+    if (value) preview.src = value;
+    else preview.removeAttribute('src');
+  };
+  urlInput.addEventListener('input', () => {
+    const value = urlInput.value.trim();
+    imageInput.value = value;
+    fileInput.value = '';
+    error.hidden = true;
+    const valid = /^(https?:\/\/|\/assets\/|\/api\/settings\/logo(?:\?v=\d+)?)$/i.test(value);
+    showPreview(valid ? value : '');
+    status.textContent = valid ? 'Logo selected. Save your changes to apply it.' : 'Enter a direct image URL or upload a logo.';
+  });
+  preview.addEventListener('error', () => {
+    preview.hidden = true;
+    status.textContent = 'The image could not be previewed. Check the URL or upload another logo.';
+  });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file || form.dataset.saving === 'true' || form.dataset.imageProcessing === 'true') return;
+    form.dataset.imageProcessing = 'true';
+    fileInput.disabled = true;
+    error.hidden = true;
+    status.textContent = 'Compressing logo…';
+    try {
+      const compressed = await compressProductImage(file);
+      if (!form.isConnected) return;
+      imageInput.value = compressed.text;
+      urlInput.value = '';
+      showPreview(compressed.text);
+      status.textContent = `${file.name}: compressed to ${Math.ceil(compressed.bytes / 1024)} KB. Save your changes to apply it.`;
+    } catch (uploadError) {
+      if (!form.isConnected) return;
+      error.textContent = uploadError.message;
+      error.hidden = false;
+      status.textContent = 'The current logo has been kept.';
+    } finally {
+      form.dataset.imageProcessing = 'false';
+      fileInput.disabled = false;
+      fileInput.value = '';
+    }
+  });
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const b = e.target.querySelector('button[type="submit"]');
     b.disabled = true;
     $('#settings-error').innerHTML = '';
     try {
       const value = Object.fromEntries(new FormData(e.target));
+      if (value.logoImageUrl.trim()) value.logoImage = value.logoImageUrl.trim();
+      delete value.logoImageUrl;
+      if (value.pageTitleSuffix === settings.siteName) value.pageTitleSuffix = value.siteName;
       if (admin?.role !== 'super_admin') value.footerSeoCode = settings.footerSeoCode || '';
       settings = await api('/admin/settings', { method: 'PUT', body: JSON.stringify(value) });
-      notice('Brand settings saved. Refresh the website to see the changes.');
+      document.title = settings.adminName || 'Tekkatha CMS';
+      layout(settingsPage());
+      bindSettings();
+      notice('Site settings saved. Reload the public website to see the changes.');
     } catch (error) {
       $('#settings-error').innerHTML =
         `<div class="form-error" role="alert">${esc(error.message)}</div>`;

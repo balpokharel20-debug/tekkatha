@@ -3,15 +3,16 @@ import assert from 'node:assert/strict';
 import { slug, articleSchema, productSchema } from '../src/schemas.js';
 import { articles, products } from '../scripts/researched-catalog-data.js';
 
-test('researched catalog contains 50 valid products with no purchase links', () => {
-  assert.equal(products.length, 50);
+test('researched catalog contains 145 valid products with device photos and no purchase links', () => {
+  assert.equal(products.length, 145);
   const counts = products.reduce((result, product) => {
     result[product.type] = (result[product.type] || 0) + 1;
     return result;
   }, {});
   assert.deepEqual(counts, {
-    Smartphones: 16,
-    Laptops: 9,
+    Smartphones: 50,
+    Laptops: 50,
+    Tablets: 20,
     'PC Components': 8,
     Accessories: 15,
     Gaming: 2,
@@ -22,6 +23,7 @@ test('researched catalog contains 50 valid products with no purchase links', () 
     assert.equal(product.source, '');
     assert.equal(product.priceStatus, 'unverified');
     assert.ok(product.priceCheckedAt);
+    assert.match(product.image, /^https:\/\//, `${product.brand} ${product.name} should have a product photo`);
   }
 });
 

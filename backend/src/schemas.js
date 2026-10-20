@@ -28,6 +28,24 @@ const productImage = z
     (value) => image.safeParse(value).success || isEncodedProductImage(value),
     'Use a /assets/ path, HTTP(S) URL, or Base64 JPEG, PNG, or WebP image no larger than 350 KB.',
   );
+function isSafeBrandImage(value) {
+  if (value === '' || (value.startsWith('/assets/') && !value.includes('..')) || /^\/api\/settings\/logo(?:\?v=\d+)?$/.test(value))
+    return true;
+  try {
+    const parsed = new URL(value);
+    return ['http:', 'https:'].includes(parsed.protocol) && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+const brandImage = z
+  .string()
+  .trim()
+  .max(MAX_PRODUCT_IMAGE_TEXT)
+  .refine(
+    (value) => isSafeBrandImage(value) || isEncodedProductImage(value),
+    'Use a /assets/ path, HTTP(S) URL, or JPEG, PNG, or WebP image no larger than 350 KB.',
+  );
 const productReviewBlock = z.discriminatedUnion('type', [
   z
     .object({
@@ -109,7 +127,7 @@ export const productSchema = z
   .object({
     brand: text(1, 80),
     name: text(1, 120),
-    type: z.enum(['Smartphones', 'Laptops', 'PC Components', 'Gaming', 'Accessories']),
+    type: z.enum(['Smartphones', 'Laptops', 'Tablets', 'PC Components', 'Gaming', 'Accessories']),
     price: z.number().min(0).max(10000000),
     priceStatus: z.enum(['sample', 'verified', 'unverified']),
     priceSource: url.default(''),
@@ -258,7 +276,14 @@ export const settingsSchema = z
   .object({
     siteName: text(1, 60),
     tagline: text(1, 120),
+    headerTagline: text(1, 120).default('Know tech. Make better choices.'),
+    logoImage: brandImage.default('/assets/mark.svg'),
     description: text(1, 400),
+    homepageTitle: text(1, 100).default('Your daily dose of tech.'),
+    homepageSubtitle: text(1, 200).default('The stories that matter. The details that help you decide.'),
+    homepageMetaTitle: text(1, 120).default('Tech News, Reviews, Prices & Buying Guides'),
+    pageTitleSuffix: z.string().trim().max(100).default('Tekkatha'),
+    footerDescription: text(1, 300).default('Making technology easier to understand, compare, and buy. From Nepal, for everyone.'),
     primaryColor: z.string().regex(/^#[0-9a-f]{6}$/i),
     aiName: text(1, 60),
     adminName: text(1, 60),

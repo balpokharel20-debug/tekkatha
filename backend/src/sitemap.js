@@ -8,6 +8,7 @@ export const sitemapPages = [
   '/gaming',
   '/smartphones',
   '/laptops',
+  '/tablets',
   '/products',
   '/prices',
   '/compare',

@@ -4,6 +4,7 @@ import { createFooterSeo } from './seo.js';
 import { renderProductText } from '../shared/product-content.js';
 import { formatNpr } from '../shared/currency.js';
 import { DEFAULT_BRAND_SETTINGS } from '../shared/brand-settings.js';
+import { productImageSources } from '../shared/product-image-delivery.js';
 import { createAnalytics } from './analytics.js';
 import { createPopupNotice } from './popup.js';
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -61,6 +62,7 @@ const productDetails = new Map();
 let selected = [];
 let siteSettings = { ...DEFAULT_BRAND_SETTINGS };
 let catalogState = { query: '', type: 'All', brand: 'All', budget: 'all', sort: 'featured' };
+let catalogVisibleLimit = 50;
 let showDifferences = false;
 let aiMessages = [];
 let aiBusy = false;
@@ -75,6 +77,7 @@ const nav = [
   ['News', '/news'],
   ['Smartphones', '/smartphones'],
   ['Laptops', '/laptops'],
+  ['Tablets', '/tablets'],
   ['PC & Gaming', '/gaming'],
   ['Reviews', '/reviews'],
   ['Buying Guides', '/guides'],
@@ -91,6 +94,7 @@ const sitemapSections = [
   ['Find your next gadget', [
     ['Smartphones', '/smartphones'],
     ['Laptops', '/laptops'],
+    ['Tablets', '/tablets'],
     ['Products', '/products'],
     ['Prices in Nepal', '/prices'],
     ['Compare Products', '/compare'],
@@ -106,17 +110,28 @@ const sitemapSections = [
     ['Sitemap', '/sitemap_index.xml'],
   ]],
 ];
+function siteSitemapSections() {
+  return sitemapSections.map(([heading, links]) => [
+    heading === 'Tekkatha' ? siteSettings.siteName : heading,
+    links.map(([label, url]) => [label === 'Tekkatha AI' ? siteSettings.aiName : label, url]),
+  ]);
+}
 const money = (amount) => formatNpr(amount);
+const vercelImageOptimization = import.meta.env.VITE_VERCEL_DEPLOY === 'true';
+function productImageAttributes(image, widths, sizes) {
+  const sources = productImageSources(image, widths, vercelImageOptimization);
+  return `src="${esc(sources.src)}"${sources.srcSet ? ` srcset="${esc(sources.srcSet)}" sizes="${esc(sizes)}"` : ''}`;
+}
 function brand() {
-  return `<a href="/" class="brand" aria-label="Tekkatha home"><img src="/assets/mark.svg" alt="" width="37" height="37"><span class="brand-text">${esc(siteSettings.siteName)}<b>.</b></span></a>`;
+  return `<a href="/" class="brand" aria-label="${esc(siteSettings.siteName)} home"><img src="${esc(siteSettings.logoImage || '/assets/mark.svg')}" alt="" width="37" height="37"><span class="brand-text">${esc(siteSettings.siteName)}<b>.</b></span></a>`;
 }
 function header() {
   const route = location.pathname;
   const dark = document.documentElement.dataset.theme === 'dark';
-  return `<header><div class="topbar"><div class="container"><div class="top-meta"><span>${esc(siteSettings.tagline)}</span><span><span class="flag" aria-hidden="true">🇳🇵</span> Nepal & beyond</span></div><div class="top-links"><a href="/about">About Tekkatha</a><a href="/contact">Contact</a><a href="/contact?topic=advertise">Advertise</a></div></div></div><div class="container header-main"><div style="display:flex;align-items:center">${brand()}<span class="tagline">Know tech. Make better choices.</span></div><div class="header-actions"><button class="header-search" data-action="search" aria-label="Search Tekkatha">${icon('search')}<span>Search Tekkatha</span><kbd>/</kbd></button><button class="icon-btn" data-action="theme" aria-label="${dark ? 'Switch to light theme' : 'Switch to dark theme'}" title="${dark ? 'Light theme' : 'Dark theme'}">${icon(dark ? 'sun' : 'moon')}</button><a class="btn" href="/ai" aria-label="Ask Tekkatha AI">${icon('spark')}<span>Ask Tekkatha AI</span></a></div></div><div class="nav-wrap"><div class="container nav"><nav class="nav-links" aria-label="Main navigation">${nav.map(([name, url]) => `<a href="${url}" ${route === url ? 'class="active" aria-current="page"' : ''}>${name}</a>`).join('')}</nav><a href="/prices" class="nav-prices">${icon('tag')} Prices in Nepal</a></div></div></header>`;
+  return `<header><div class="topbar"><div class="container"><div class="top-meta"><span>${esc(siteSettings.tagline)}</span><span><span class="flag" aria-hidden="true">🇳🇵</span> Nepal & beyond</span></div><div class="top-links"><a href="/about">About ${esc(siteSettings.siteName)}</a><a href="/contact">Contact</a><a href="/contact?topic=advertise">Advertise</a></div></div></div><div class="container header-main"><div style="display:flex;align-items:center">${brand()}<span class="tagline">${esc(siteSettings.headerTagline)}</span></div><div class="header-actions"><button class="header-search" data-action="search" aria-label="Search ${esc(siteSettings.siteName)}">${icon('search')}<span>Search ${esc(siteSettings.siteName)}</span><kbd>/</kbd></button><button class="icon-btn" data-action="theme" aria-label="${dark ? 'Switch to light theme' : 'Switch to dark theme'}" title="${dark ? 'Light theme' : 'Dark theme'}">${icon(dark ? 'sun' : 'moon')}</button><a class="btn" href="/ai" aria-label="Ask ${esc(siteSettings.aiName)}">${icon('spark')}<span>Ask ${esc(siteSettings.aiName)}</span></a></div></div><div class="nav-wrap"><div class="container nav"><nav class="nav-links" aria-label="Main navigation">${nav.map(([name, url]) => `<a href="${url}" ${route === url ? 'class="active" aria-current="page"' : ''}>${name}</a>`).join('')}</nav><a href="/prices" class="nav-prices">${icon('tag')} Prices in Nepal</a></div></div></header>`;
 }
 function footer() {
-  return `<footer class="footer"><div class="container"><div class="footer-main"><div class="footer-brand">${brand()}<p>Making technology easier to understand, compare, and buy. From Nepal, for everyone.</p></div><nav class="footer-links" aria-label="Footer navigation">${sitemapSections.map(([heading, links]) => `<div><h4>${esc(heading)}</h4>${links.map(([label, url]) => `<a href="${esc(url)}">${esc(label)}</a>`).join('')}</div>`).join('')}</nav></div><div class="footer-bottom"><span>© Tekkatha. All rights reserved.</span><span>${icon('globe')} Built around better tech decisions.</span></div></div></footer>`;
+  return `<footer class="footer"><div class="container"><div class="footer-main"><div class="footer-brand">${brand()}<p>${esc(siteSettings.footerDescription)}</p></div><nav class="footer-links" aria-label="Footer navigation">${siteSitemapSections().map(([heading, links]) => `<div><h4>${esc(heading)}</h4>${links.map(([label, url]) => `<a href="${esc(url)}">${esc(label)}</a>`).join('')}</div>`).join('')}</nav></div><div class="footer-bottom"><span>© ${esc(siteSettings.siteName)}. All rights reserved.</span><span>${icon('globe')} Built around better tech decisions.</span></div></div></footer>`;
 }
 function meta(a, full = false) {
   const publishedAt = !a.isSample && (a.publishedAt || a.createdAt);
@@ -138,14 +153,14 @@ function product(p) {
       : p.priceCheckedAt
         ? `Listing snapshot · ${new Date(p.priceCheckedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
         : 'Unverified price';
-  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${priceTag}${variantCount > 1 ? ` · ${variantCount} variants` : ''}</span><img src="${esc(p.image)}" alt="Illustration of ${esc(p.brand)} ${esc(p.name)}" loading="lazy"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
+  return `<article class="product-card"><a href="/product/${p.id}" aria-label="View ${esc(p.brand)} ${esc(p.name)}"><div class="product-visual"><span class="product-tag">${priceTag}${variantCount > 1 ? ` · ${variantCount} variants` : ''}</span><img ${productImageAttributes(p.image, [320, 640], '(max-width: 700px) 45vw, 280px')} alt="Photo of ${esc(p.brand)} ${esc(p.name)}" loading="lazy" decoding="async"></div></a><div class="product-info"><p class="product-brand">${esc(p.brand)}</p><a href="/product/${p.id}"><h3>${esc(p.name)}</h3></a><p class="product-variant">${esc(p.variant)}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button class="compare-add ${selected.includes(p.id) ? 'selected' : ''}" data-compare="${p.id}" aria-label="${selected.includes(p.id) ? 'Remove' : 'Add'} ${esc(p.name)} ${selected.includes(p.id) ? 'from' : 'to'} comparison">${icon(selected.includes(p.id) ? 'check' : 'plus')} Compare</button></div></div></article>`;
 }
 function title(name, link, label = 'View all') {
   return `<div class="section-title"><h2>${name}</h2>${link ? `<a class="text-link" href="${link}">${label} ${icon('arrow')}</a>` : ''}</div>`;
 }
 function homepage() {
   if (!articles.length)
-    return `<div class="container page-content">${pageHead('Technology, Explained.', 'The latest stories will appear here as the editorial team publishes them.')}<div class="empty-state"><h3>The next story is on its way.</h3><a class="btn" href="/products">Explore products</a></div></div>`;
+    return `<div class="container page-content">${pageHead(siteSettings.homepageTitle, siteSettings.homepageSubtitle)}<div class="empty-state"><h3>The next story is on its way.</h3><a class="btn" href="/products">Explore products</a></div></div>`;
   const recommendedArticles = articles.length > 6 ? articles.slice(6, 9) : articles.slice(1, 4);
   return `<div class="container"><div class="trending"><span class="trending-label">${icon('trend')} TRENDING</span><div class="trend-items">${articles
     .slice(0, 4)
@@ -155,7 +170,7 @@ function homepage() {
     )
     .join(
       '',
-    )}<a href="/prices">Gadget prices in Nepal</a></div></div><div class="intro"><h1>Your daily dose of tech.</h1><p>The stories that matter. The details that help you decide.</p></div><section class="hero-grid" aria-label="Featured stories"><a href="/article/${articles[0].id}" class="hero-main"><img src="${esc(articles[0].image)}" alt="Featured technology story" fetchpriority="high"><div class="hero-shade"></div><div class="hero-content"><span class="badge">THE BIG READ</span><h2>${esc(articles[0].title)}</h2><p>${esc(articles[0].excerpt)}</p>${meta(articles[0], true)}</div></a><div class="hero-side">${articles
+    )}<a href="/prices">Gadget prices in Nepal</a></div></div><div class="intro"><h1>${esc(siteSettings.homepageTitle)}</h1><p>${esc(siteSettings.homepageSubtitle)}</p></div><section class="hero-grid" aria-label="Featured stories"><a href="/article/${articles[0].id}" class="hero-main"><img src="${esc(articles[0].image)}" alt="Featured technology story" fetchpriority="high"><div class="hero-shade"></div><div class="hero-content"><span class="badge">THE BIG READ</span><h2>${esc(articles[0].title)}</h2><p>${esc(articles[0].excerpt)}</p>${meta(articles[0], true)}</div></a><div class="hero-side">${articles
     .slice(1, 3)
     .map(
       (a) =>
@@ -171,7 +186,7 @@ function homepage() {
     )
     .join(
       '',
-    )}</div></div><div class="ai-mini">${icon('spark', 'ai-symbol')}<h3>A little help. A smarter choice.</h3><p>Ask Tekkatha AI about specs, comparisons, and your next gadget.</p><a href="/ai" class="btn">Ask Tekkatha AI ${icon('arrow')}</a></div></aside></section></div><section class="price-section"><div class="container">${title('Meet your next upgrade', '/prices', 'Explore prices')}<p class="section-subtitle">Explore the product database. Check the verification label on every price.</p><div class="product-grid">${products.map(product).join('')}</div></div></section><section class="container guide-section">${title('Buy better. Know more.', '/guides', 'All buying guides')}<div class="guide-grid">${articles
+    )}</div></div><div class="ai-mini">${icon('spark', 'ai-symbol')}<h3>A little help. A smarter choice.</h3><p>Ask Tekkatha AI about specs, comparisons, and your next gadget.</p><a href="/ai" class="btn">Ask Tekkatha AI ${icon('arrow')}</a></div></aside></section></div><section class="price-section"><div class="container">${title('Meet your next upgrade', '/prices', 'Explore prices')}<p class="section-subtitle">Explore the product database. Check the verification label on every price.</p><div class="product-grid">${products.slice(0, 12).map(product).join('')}</div></div></section><section class="container guide-section">${title('Buy better. Know more.', '/guides', 'All buying guides')}<div class="guide-grid">${articles
     .filter((a) => a.kind === 'Guide')
     .slice(0, 3)
     .map(
@@ -193,8 +208,17 @@ function tray() {
 function shell(content) {
   const html = (header() + `<main id="main" tabindex="-1">${content}</main>` + footer() + tray())
     .replaceAll('Product Database', 'Products')
-    .replaceAll('product database', 'product catalog');
-  $('#app').innerHTML = html;
+    .replaceAll('product database', 'product catalog')
+    .replaceAll('Product illustration', 'Device photo')
+    .replaceAll('Illustration of ', 'Photo of ');
+  const deliveredHtml = vercelImageOptimization
+    ? html.replace(/<img\b([^>]*?)\bsrc="(https:\/\/[^"]+)"([^>]*)>/g, (tag, before, source, after) => {
+        const { src, srcSet } = productImageSources(source, [320, 640, 960], true);
+        if (!srcSet) return tag;
+        return `<img${before}src="${esc(src)}" srcset="${esc(srcSet)}" sizes="(max-width: 700px) 45vw, 320px"${after}>`;
+      })
+    : html;
+  $('#app').innerHTML = deliveredHtml;
   mountFloatingChat();
   adDisplay.mount();
 }
@@ -207,7 +231,7 @@ function render() {
   let socialImageAlt = `${siteSettings.siteName} technology coverage`;
   let socialType = 'website';
   if (path === '/') content = homepage();
-  else if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) {
+  else if (['/products', '/prices', '/smartphones', '/laptops', '/tablets'].includes(path)) {
     content = catalogPage(path);
     pageTitle =
       path === '/prices'
@@ -216,6 +240,8 @@ function render() {
           ? 'Smartphones'
           : path === '/laptops'
             ? 'Laptops'
+            : path === '/tablets'
+              ? 'Tablets'
             : 'Products';
   } else if (['/news', '/reviews', '/guides', '/gaming'].includes(path)) {
     content = editorialPage(path);
@@ -257,7 +283,7 @@ function render() {
     pageTitle = 'Compare Products';
   } else if (path === '/ai') {
     content = aiPage();
-    pageTitle = 'Tekkatha AI';
+    pageTitle = siteSettings.aiName;
   } else if (path === '/sitemap') {
     content = sitemapPage();
     pageTitle = 'Sitemap';
@@ -290,12 +316,12 @@ function render() {
     pageTitle = 'Page not found';
   }
   document.title = pageTitle
-    ? `${pageTitle} — ${siteSettings.siteName}`
-    : siteSettings.siteName + ' — Tech News, Reviews, Prices & Buying Guides';
+    ? (siteSettings.pageTitleSuffix ? `${pageTitle} — ${siteSettings.pageTitleSuffix}` : pageTitle)
+    : `${siteSettings.siteName} — ${siteSettings.homepageMetaTitle}`;
   shell(content);
   analytics.setPage(path);
   if (path === '/ai') bindAi();
-  if (['/products', '/prices', '/smartphones', '/laptops'].includes(path)) bindCatalog(path);
+  if (['/products', '/prices', '/smartphones', '/laptops', '/tablets'].includes(path)) bindCatalog(path);
   if (path === '/compare') bindCompare();
   if (path.startsWith('/product/')) {
     $('#retry-product-details')?.addEventListener('click', () => {
@@ -507,7 +533,7 @@ function sitemapPage() {
       `/product/${encodeURIComponent(product.id)}`,
     ])
     .sort(([a], [b]) => a.localeCompare(b));
-  const sections = [...sitemapSections, ['Articles', articleLinks], ['Products', productLinks]];
+  const sections = [...siteSitemapSections(), ['Articles', articleLinks], ['Products', productLinks]];
   return `<div class="container sitemap-page">${pageHead('Sitemap', 'Browse every section, published article, and product on Tekkatha.')}<p class="sitemap-xml-link">Looking for the search engine version? <a href="/sitemap_index.xml">View the XML sitemap index</a>.</p><nav class="sitemap-grid" aria-label="All site pages">${sections.filter(([, links]) => links.length).map(([heading, links]) => `<section class="sitemap-group"><h2>${esc(heading)}</h2><ul>${links.map(([label, url]) => `<li><a href="${esc(url)}">${esc(label)}</a></li>`).join('')}</ul></section>`).join('')}</nav></div>`;
 }
 function catalogType(path) {
@@ -515,6 +541,8 @@ function catalogType(path) {
     ? 'Smartphones'
     : path === '/laptops'
       ? 'Laptops'
+      : path === '/tablets'
+        ? 'Tablets'
       : catalogState.type;
 }
 function filteredProducts(path) {
@@ -541,10 +569,12 @@ function catalogPage(path) {
         ? 'Smartphones'
         : path === '/laptops'
           ? 'Laptops'
+          : path === '/tablets'
+            ? 'Tablets'
         : 'The product catalog';
   const type = catalogType(path);
   const results = filteredProducts(path);
-  return `<div class="container">${pageHead(name, 'Less searching. More understanding. Explore specifications and find the right fit for your budget.')}<div class="catalog-banner">${icon('shield')}<p><strong>Know the price context.</strong> Every record has a price label. Confirm current retailer pricing, availability and warranty before buying.</p></div><div class="catalog-toolbar"><label class="catalog-search">${icon('search')}<input type="search" id="catalog-query" placeholder="Search a product or specification" aria-label="Search products" value="${esc(catalogState.query)}"></label>${!['/smartphones', '/laptops'].includes(path) ? `<label class="select-label"><span>Category</span><select id="catalog-type"><option value="All">All categories</option>${[...new Set(products.map((p) => p.type))].map((x) => `<option ${type === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}<label class="select-label"><span>Brand</span><select id="catalog-brand"><option value="All">All brands</option>${[...new Set(products.map((p) => p.brand))].map((x) => `<option ${catalogState.brand === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><label class="select-label"><span>Budget</span><select id="catalog-budget">${[
+  return `<div class="container">${pageHead(name, 'Less searching. More understanding. Explore specifications and find the right fit for your budget.')}<div class="catalog-banner">${icon('shield')}<p><strong>Know the price context.</strong> Every record has a price label. Confirm current retailer pricing, availability and warranty before buying.</p></div><div class="catalog-toolbar"><label class="catalog-search">${icon('search')}<input type="search" id="catalog-query" placeholder="Search a product or specification" aria-label="Search products" value="${esc(catalogState.query)}"></label>${!['/smartphones', '/laptops', '/tablets'].includes(path) ? `<label class="select-label"><span>Category</span><select id="catalog-type"><option value="All">All categories</option>${[...new Set(products.map((p) => p.type))].map((x) => `<option ${type === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>` : ''}<label class="select-label"><span>Brand</span><select id="catalog-brand"><option value="All">All brands</option>${[...new Set(products.map((p) => p.brand))].map((x) => `<option ${catalogState.brand === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label><label class="select-label"><span>Budget</span><select id="catalog-budget">${[
     ['all', 'Any budget'],
     ['50000', 'Under Rs. 50,000'],
     ['100000', 'Under Rs. 1,00,000'],
@@ -556,7 +586,7 @@ function catalogPage(path) {
     )
     .join(
       '',
-    )}</select></label></div><div class="results-bar"><p id="result-count">${results.length} product${results.length === 1 ? '' : 's'}</p><label>Sort by <select id="catalog-sort" aria-label="Sort products">${[
+    )}</select></label></div><div class="results-bar"><p id="result-count">${Math.min(results.length, catalogVisibleLimit)} of ${results.length} products</p><label>Sort by <select id="catalog-sort" aria-label="Sort products">${[
     ['featured', 'Featured'],
     ['low', 'Price: low to high'],
     ['high', 'Price: high to low'],
@@ -567,7 +597,7 @@ function catalogPage(path) {
     )
     .join(
       '',
-    )}</select></label></div><div class="page-content"><div class="product-grid catalog-grid" id="catalog-results">${results.map(product).join('') || catalogEmpty()}</div>${
+    )}</select></label></div><div class="page-content"><div class="product-grid catalog-grid" id="catalog-results">${results.slice(0, catalogVisibleLimit).map(product).join('') || catalogEmpty()}</div><div class="catalog-pagination"><button class="btn btn-outline" id="catalog-load-more" type="button" ${results.length <= catalogVisibleLimit ? 'hidden' : ''}>Load next 50</button></div>${
     type !== 'All'
       ? `<section class="category-stories">${title(`Know your ${type.toLowerCase()}`)}<div class="story-grid full-grid">${articles
           .filter((a) => a.category === type)
@@ -589,11 +619,17 @@ function bindCatalog(path) {
       catalogState[key] = e.target.value;
       refreshCatalog(path);
     });
+  $('#catalog-load-more')?.addEventListener('click', () => {
+    catalogVisibleLimit += 50;
+    refreshCatalog(path, true);
+  });
 }
-function refreshCatalog(path) {
+function refreshCatalog(path, keepLimit = false) {
+  if (!keepLimit) catalogVisibleLimit = 50;
   const results = filteredProducts(path);
-  $('#catalog-results').innerHTML = results.map(product).join('') || catalogEmpty();
-  $('#result-count').textContent = `${results.length} product${results.length === 1 ? '' : 's'}`;
+  $('#catalog-results').innerHTML = results.slice(0, catalogVisibleLimit).map(product).join('') || catalogEmpty();
+  $('#result-count').textContent = `${Math.min(results.length, catalogVisibleLimit)} of ${results.length} products`;
+  $('#catalog-load-more').hidden = results.length <= catalogVisibleLimit;
 }
 function editorialPage(path) {
   const config = {
@@ -735,7 +771,7 @@ function productPage(p) {
     'in-stock': 'Listed as in stock',
     'out-of-stock': 'Listed as out of stock',
   };
-  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Product illustration</span><img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p><div class="detail-actions">${p.priceSource ? '<a class="btn buy-now-btn" href="' + esc(p.priceSource) + '" target="_blank" rel="sponsored noopener noreferrer">Buy now ' + icon('arrow') + '</a>' : ''}<button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${productSpecRows(p).map(([name, , value, glyph]) => '<div class="spec-item">' + icon(glyph) + '<div><span>' + name + '</span><strong>' + esc(value) + '</strong></div></div>').join('') || '<p class="muted">Product specifications will be added soon.</p>'}</div></section>${productLongContent(p)}<section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
+  return `<div class="container">${pageHead(p.brand + ' ' + p.name, p.note, 'Product Database / ' + p.name)}<div class="page-content"><section class="product-detail"><div class="product-detail-image"><span class="pill">Device photo</span><img src="${esc(p.image)}" alt="Photo of ${esc(p.brand + ' ' + p.name)}" loading="lazy" decoding="async"></div><div class="product-detail-copy"><span class="eyebrow">${esc(p.type)}</span><h2>${esc(p.name)}</h2><p class="variant">${esc(p.variant)}</p><div class="detail-price">${money(p.price)}<span>${priceLabel(p)}</span></div><p class="price-disclaimer">${p.priceStatus === 'sample' ? 'This is a sample price, not a current retailer quote.' : 'Confirm the current price and exact configuration with the seller.'} ${available[p.availability] || available.unverified}.${p.priceCheckedAt ? ' Checked ' + esc(new Date(p.priceCheckedAt).toLocaleDateString('en-GB')) + '.' : ''}</p><div class="detail-actions">${p.priceSource ? '<a class="btn buy-now-btn" href="' + esc(p.priceSource) + '" target="_blank" rel="sponsored noopener noreferrer">Buy now ' + icon('arrow') + '</a>' : ''}<button class="btn" data-compare="${p.id}">${icon('compare')} ${selected.includes(p.id) ? 'Remove from comparison' : 'Add to comparison'}</button><a class="btn btn-outline" href="/ai?q=${encodeURIComponent('Tell me about ' + p.brand + ' ' + p.name)}">${icon('spark')} Ask Tekkatha AI</a></div>${p.source ? '<a class="manufacturer-link" href="' + esc(p.source) + '" target="_blank" rel="noopener noreferrer">Manufacturer specifications ' + icon('arrow') + '</a>' : ''}</div></section><section class="spec-section">${title('The details that matter')}<div class="spec-grid">${productSpecRows(p).map(([name, , value, glyph]) => '<div class="spec-item">' + icon(glyph) + '<div><span>' + name + '</span><strong>' + esc(value) + '</strong></div></div>').join('') || '<p class="muted">Product specifications will be added soon.</p>'}</div></section>${productLongContent(p)}<section class="product-related">${title('Explore similar products', '/products', 'View database')}<div class="product-grid">${same.map(product).join('')}</div>${!same.length ? '<p class="muted">More products will appear as the catalog expands.</p>' : ''}</section></div></div>`;
 }
 function productVariantMarkup(product) {
   const normalize = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -865,6 +901,7 @@ function articlePage(a) {
     Reviews: '/reviews',
     Smartphones: '/smartphones',
     Laptops: '/laptops',
+    Tablets: '/tablets',
     Gaming: '/gaming',
     'PC Components': '/gaming',
     'PC Builds': '/gaming',
@@ -1186,6 +1223,7 @@ document.addEventListener('click', (e) => {
   const action = e.target.closest('[data-action]')?.dataset.action;
   if (action === 'reset-catalog') {
     catalogState = { query: '', type: 'All', brand: 'All', budget: 'all', sort: 'featured' };
+    catalogVisibleLimit = 50;
     render();
   }
   if (action === 'new-chat') {
@@ -1313,8 +1351,15 @@ async function boot() {
     if (settings) {
       siteSettings = { ...siteSettings, ...settings };
       document.documentElement.style.setProperty('--brand-light', settings.primaryColor);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', settings.primaryColor);
       const meta = document.querySelector('meta[name="description"]');
       if (meta) meta.content = settings.description;
+      const favicon = document.querySelector('link[rel~="icon"]');
+      if (favicon && settings.logoImage) {
+        favicon.href = settings.logoImage;
+        if (/\.svg(?:$|\?)/i.test(settings.logoImage)) favicon.type = 'image/svg+xml';
+        else favicon.removeAttribute('type');
+      }
     }
     render();
     registerTools();

@@ -30,6 +30,17 @@ test('footer code preserves HTML and script text; older settings and clearing ar
   assert.equal(settingsSchema.safeParse({ ...settings, footerSeoCode: 42 }).success, false);
 });
 
+test('brand settings expose editable homepage copy and accept only safe logo sources', () => {
+  const parsed = settingsSchema.parse(settings);
+  assert.equal(parsed.logoImage, '/assets/mark.svg');
+  assert.equal(parsed.homepageTitle, 'Your daily dose of tech.');
+  assert.equal(parsed.homepageSubtitle, 'The stories that matter. The details that help you decide.');
+  assert.equal(parsed.pageTitleSuffix, 'Tekkatha');
+  assert.equal(settingsSchema.parse({ ...settings, logoImage: '/api/settings/logo?v=123' }).logoImage, '/api/settings/logo?v=123');
+  assert.equal(settingsSchema.safeParse({ ...settings, logoImage: 'javascript:alert(1)' }).success, false);
+  assert.equal(settingsSchema.safeParse({ ...settings, logoImage: 'https://' }).success, false);
+});
+
 test('structured data uses the serving origin and current page, without placeholder business facts', () => {
   const data = buildSeoData({
     settings,
@@ -48,6 +59,15 @@ test('structured data uses the serving origin and current page, without placehol
   assert.equal(page.isPartOf['@id'], website['@id']);
   for (const key of ['email', 'contactPoint', 'address', 'offers', 'aggregateRating'])
     assert.equal(Object.hasOwn(organization, key), false);
+});
+
+test('organization structured data follows the admin-selected logo', () => {
+  const data = buildSeoData({
+    settings: { ...settings, logoImage: '/assets/new-brand-mark.png' },
+    url: 'https://tekkatha.example/',
+    title: 'New publication title',
+  });
+  assert.equal(data['@graph'][0].logo, 'https://tekkatha.example/assets/new-brand-mark.png');
 });
 
 test('product markup stays present after client rendering and includes only current sourced NPR offers', () => {
